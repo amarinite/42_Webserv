@@ -1,0 +1,14 @@
+name: Auto Create Branch
+
+on:
+  issues:
+    types: [assigned] # Triggers when you or your partner assign the issue
+
+jobs:
+  create_branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Branch
+        uses: robvanderleek/create-branch-action@v1.5.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
