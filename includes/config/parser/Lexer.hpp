@@ -1,22 +1,24 @@
 #pragma once
-#include "../config/parser/Token.hpp"
+#include <vector>
+#include <string> 
+#include "Token.hpp"
 
 class Lexer
 {
-	private:
-		Lexer(const std::string& input);
-		
-		std::string	_input;
-		std::size_t	_cursor;
- 		int			_line;
+	private:		
+		std::string			_input;
+		std::size_t			_cursor;
+ 		int					_line;
 
-		void		skipWhitespaceAndComments();
-		Token 		readWord();
-		char		current() const;
-		char		advance();
-		bool		isAtEnd() const;
+		void				skipWhitespaceAndComments();
+		Token 				readWord();
+		char				current() const;
+		char				advance();
+		bool				isAtEnd() const;
+		std::vector<Token>	run();
 
 	public:
-		std::vector<Token>	tokenize();
+		Lexer(const std::string& input);
+		static std::vector<Token>	tokenize(const std::string& input);
 
 };
