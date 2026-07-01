@@ -25,8 +25,8 @@ static bool testSimpleServerBlock()
 {
 	std::string input =
 		"server {\n"
-		"    listen 80;\n"
-		"    server_name example.com;\n"
+		"	listen 80;\n"
+		"	server_name example.com;\n"
 		"}\n";
 
 	std::vector<Token> tokens = Lexer::tokenize(input);
@@ -67,7 +67,7 @@ static bool testCommentsAreIgnored()
 	std::string input =
 		"# this is a comment\n"
 		"server {\n"
-		"    listen 80; # inline comment\n"
+		"	listen 80; # inline comment\n"
 		"}\n";
 
 	std::vector<Token> tokens = Lexer::tokenize(input);
@@ -101,8 +101,8 @@ static bool testLineNumbers()
 {
 	std::string input =
 		"server {\n"
-		"    listen 80;\n"
-		"    server_name example.com;\n"
+		"	listen 80;\n"
+		"	server_name example.com;\n"
 		"}\n";
 
 	std::vector<Token> tokens = Lexer::tokenize(input);
@@ -130,10 +130,10 @@ static bool testLineNumbers()
 void runLexerTests(int& passed, int& failed)
 {
 	Test tests[] = {
-		{ "empty input produces EOF",   testEmptyInputProducesEOF },
-		{ "simple server block",        testSimpleServerBlock },
-		{ "comments are ignored",       testCommentsAreIgnored },
-		{ "line numbers",               testLineNumbers },
+		{ "empty input produces EOF",	testEmptyInputProducesEOF },
+		{ "simple server block",		testSimpleServerBlock },
+		{ "comments are ignored",		testCommentsAreIgnored },
+		{ "line numbers",				testLineNumbers },
 	};
 
 	int localPassed = 0;

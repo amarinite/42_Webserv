@@ -88,5 +88,5 @@ std::vector<Token> Lexer::run()
 std::vector<Token> Lexer::tokenize(const std::string& input)
 {
 	Lexer lexer(input);
-    return lexer.run();
+	return lexer.run();
 }
