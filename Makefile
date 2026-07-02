@@ -22,6 +22,15 @@ INC_DIR = ./includes \
 ALL_INC = $(addprefix -I, $(INC_DIR))
 CXXFLAGS = -Wall -Wextra -Werror -std=c++98 $(ALL_INC)
 
+TEST_DIR        = tests
+TEST_OBJ_DIR    = obj/tests
+TEST_NAME       = test_runner
+TEST_SRC        = $(TEST_DIR)/test.cpp \
+                  $(TEST_DIR)/LexerTests.cpp
+TEST_DEPS       = src/config/parser/Lexer.cpp
+TEST_OBJ        = $(TEST_SRC:$(TEST_DIR)/%.cpp=$(TEST_OBJ_DIR)/%.o) \
+                  $(TEST_DEPS:src/%.cpp=$(TEST_OBJ_DIR)/deps/%.o)
+
 all: $(NAME)
 
 -include $(DEP)
@@ -29,7 +38,7 @@ all: $(NAME)
 $(NAME): $(OBJ)
 	@echo "$(BLUE)linking objects...$(RESET)"
 	@$(CXX) $(CXXFLAGS) $(OBJ) -o $(NAME)
-	@echo "$(GREEN)$(NAME) has been cooked $(RESET)🍲"
+	@echo "$(GREEN)$(NAME) has been served $(RESET)🍲"
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp  Makefile | $(OBJ_DIR)
 	@mkdir -p $(dir $@)
@@ -47,14 +56,33 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp  Makefile | $(OBJ_DIR)
 $(OBJ_DIR):
 	@mkdir -p $(OBJ_DIR)
 
+$(TEST_OBJ_DIR)/%.o: $(TEST_DIR)/%.cpp | $(TEST_OBJ_DIR)
+	@mkdir -p $(dir $@)
+	@$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(TEST_OBJ_DIR)/deps/%.o: src/%.cpp | $(TEST_OBJ_DIR)
+	@mkdir -p $(dir $@)
+	@$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(TEST_OBJ_DIR):
+	@mkdir -p $(TEST_OBJ_DIR)
+
+$(TEST_NAME): $(TEST_OBJ)
+	@$(CXX) $(CXXFLAGS) $(TEST_OBJ) -o $(TEST_NAME)
+
+test: $(TEST_NAME)
+	@echo "$(BLUE)running tests...$(RESET)"
+	@./$(TEST_NAME) && echo "$(GREEN)all tests passed$(RESET)" || echo "$(PINK)some tests failed$(RESET)"
+
+
 clean:
 	@rm -rf $(OBJ_DIR)
 	@echo "$(BLUE)objects cleaned $(RESET)🧹"
 
 fclean: clean
-	@rm -f $(NAME)
+	@rm -f $(NAME) $(TEST_NAME)
 	@echo "$(PINK)$(NAME) has been black holed $(RESET)🕳"
 
 re: fclean all
 
-.PHONY: all clean fclean re
+.PHONY: all clean fclean re test

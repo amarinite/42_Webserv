@@ -1,0 +1,25 @@
+# Executables
+webserv
+test_runner
+
+# Object files and dependencies
+obj/
+*.o
+*.d
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Compiled binaries
+*.a
+*.so
+*.dylib
+
+# Temporary files
+*.tmp
+*.log

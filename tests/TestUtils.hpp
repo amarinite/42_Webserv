@@ -1,0 +1,21 @@
+#include <iostream>
+
+#define RESET "\033[0m"
+#define RED   "\033[1;31m"
+#define GREEN "\033[1;32m"
+
+#define ASSERT(condition) \
+	if (!(condition)) { \
+		std::cerr << RED <<"FAIL: " << #condition \
+				  << " (" << __FILE__ << ":" << __LINE__ << ")\n" << RESET; \
+		return false; \
+	}
+
+
+inline void printTestSummary(const char* name, int passed, int failed)
+{
+	std::cout << GREEN << name << ": " << passed << "/" << (passed + failed) << " passed" << RESET;
+	if (failed > 0)
+		std::cout << " (" << failed << " failed)";
+	std::cout << "\n";
+}
