@@ -26,6 +26,8 @@ HandleSocket::HandleSocket(const HandleSocket &other) :
 
 HandleSocket::~HandleSocket()
 {
+	if (_fd != -1)
+		close(_fd);
 	std::cout << "Socket Destructor called" << std::endl;
 }
 
