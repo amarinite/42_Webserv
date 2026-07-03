@@ -17,6 +17,7 @@ CXX = c++
 INC_DIR = ./includes \
 			./includes/config \
 			./includes/config/parser \
+			./includes/network \
 			./includes/utils
 
 ALL_INC = $(addprefix -I, $(INC_DIR))
@@ -26,8 +27,11 @@ TEST_DIR        = tests
 TEST_OBJ_DIR    = obj/tests
 TEST_NAME       = test_runner
 TEST_SRC        = $(TEST_DIR)/test.cpp \
-                  $(TEST_DIR)/LexerTests.cpp
-TEST_DEPS       = src/config/parser/Lexer.cpp
+                  $(TEST_DIR)/LexerTests.cpp \
+				  $(TEST_DIR)/SocketTests.cpp
+TEST_DEPS       = src/config/parser/Lexer.cpp \
+				  src/network/SocketManager.cpp \
+				  src/network/Sockets.cpp
 TEST_OBJ        = $(TEST_SRC:$(TEST_DIR)/%.cpp=$(TEST_OBJ_DIR)/%.o) \
                   $(TEST_DEPS:src/%.cpp=$(TEST_OBJ_DIR)/deps/%.o)
 

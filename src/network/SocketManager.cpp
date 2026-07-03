@@ -1,6 +1,6 @@
 #include "SocketManager.hpp"
 
-HandleSocket::HandleSocket()
+HandleSocket::HandleSocket() : _host(""), _port(-1), _fd(-1)
 {
 	std::cout << "Como hemos llegado aqui?" << std::endl;
 }
@@ -17,9 +17,16 @@ HandleSocket::HandleSocket(const std::string &host, const int &port) :
 HandleSocket::HandleSocket(const HandleSocket &other) :
 	_host(other._host),
 	_port(other._port),
-	_fd(other._fd)
+	_fd(other._fd),
+	_addr(other._addr),
+	_addrLen(other._addrLen)
 {
 	std::cout << "Other socket creado" << std::endl;
+}
+
+HandleSocket::~HandleSocket()
+{
+	std::cout << "Socket Destructor called" << std::endl;
 }
 
 HandleSocket &HandleSocket::operator=(const HandleSocket &other)
@@ -29,6 +36,8 @@ HandleSocket &HandleSocket::operator=(const HandleSocket &other)
 		this->_host = other._host;
 		this->_port = other._port;
 		this->_fd  = other._fd;
+		this->_addr = other._addr;
+		this->_addrLen = other._addrLen;
 	}
 	return *this;
 }
