@@ -2,20 +2,10 @@
 #include "Lexer.hpp"
 #include <iostream>
 
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
-
-typedef bool (*TestFn)();
-
-struct Test
-{
-	const char*	name;
-	TestFn		fn;
-};
-
 bool testEmptyInputProducesEOF()
 {
 	std::vector<Token> tokens = Lexer::tokenize("");
-	
+
 	ASSERT(tokens.size() == 1);
 	ASSERT(tokens[0].type == TOKEN_EOF);
 	return true;
