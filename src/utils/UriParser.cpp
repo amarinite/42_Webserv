@@ -91,9 +91,9 @@ static int authCheck(t_uri &uri) {
 	if (!port.empty()) {
 		std::stringstream ss;
 		ss << port;
-		ss >> uri.port;
+		ss >> uri.auth_port;
 	} else {
-		uri.port = 80;
+		uri.auth_port = 80;
 	}
 	uri.authority.clear();
 	uri.authority = host;
@@ -101,43 +101,46 @@ static int authCheck(t_uri &uri) {
 	return 0;
 }
 
-static int vectorizePath(t_uri &uri, std::vector<string> &route) {
+static int vectorizePath(t_uri &uri, std::vector<std::string> &route) {
 	if (uri.path.empty() || uri.path == "/") {
 		route.push_back("/");
-		return;
+		return 0;
 	}
 	
 	std::stringstream ss(uri.path);
 	std::string segment;
 
 	while (std::getline(ss, segment, '/')) {
-		if (!segment.empty()) {
+		if (segment.empty() || !segment.empty()) {
 			if (segment == ".")
                 continue;
 			if (segment == "..") {
 				if (!route.empty()) {
 					route.pop_back();
+					continue;
 				} else {
 					return 1;
 				}
 			}
-			route.push_back("/" + segment);
+			route.push_back(segment);
 		}
 	}
 	return 0;
 }
 
-static void rebuildPath(t_uri &uri, const std::vector<string> &route) {
+static void rebuildPath(t_uri &uri, const std::vector<std::string> &route) {
 	if (route.empty()) {
         uri.path = "/";
         return;
     }
 
-	std::stringstream ss;
-	for (size_t i = 0; !route.empty(); ++i) {
-		ss << route[i];
-	}
-	uri.path = ss.str();
+	std::string new_path = "";
+    for (size_t i = 0; i < route.size(); ++i) {
+		if (route[i].empty())
+			++i;
+		new_path += "/" + route[i];
+    }
+    uri.path = new_path;
 }
 
 static int pathCheck(t_uri &uri) {
@@ -146,10 +149,10 @@ static int pathCheck(t_uri &uri) {
 		|| uri.path.find('}') != std::string::npos)	
 		return 1;
 
-	if (uri.path == 0)
+	if (uri.path == "/")
 		return 0;
-	std::vector<string> route;
-	if (vectorizePath(uri, route)
+	std::vector<std::string> route;
+	if (vectorizePath(uri, route))
 		return 1;
 	rebuildPath(uri, route);
 	return 0;
@@ -175,8 +178,6 @@ static void detectQueryFrag(t_uri &uri, std::string req, size_t checked_pos) {
 			uri.has_query = false;
 		}
 	}
-
-
 }
 
 static int detectPath(t_uri &uri, std::string req) {
@@ -190,7 +191,7 @@ static int detectPath(t_uri &uri, std::string req) {
 		}
 	}
 	if (uri.has_auth == true) {
-		if (path_begin != std::string::npos)
+		if (path_begin != std::string::npos) {
 			uri.has_path = true;
 		} else {
 			uri.has_path = false;
@@ -201,7 +202,11 @@ static int detectPath(t_uri &uri, std::string req) {
 }
 
 static int isDirectPath(t_uri &uri, std::string req) {
-	if (req[0] == "/") == 0 && req.size() == 1) {
+	if (req.find("://") != std::string::npos) {
+        return 0;
+    }
+	
+	if (req[0] == '/' && req.size() == 1) {
 		uri.scheme = '/';
 		return 0;
 	}
@@ -237,14 +242,23 @@ static int detectDelimiters(t_uri &uri, std::string req) {
 	return 0;
 }
 
-void	parseUri(t_uri &uri, std::string req) {
-	if (detectDelimiters(uri, req))
-		//400 Bad Request
+static void init_struct(t_uri &uri) {
+	uri.has_scheme = false;
+    uri.has_auth = false;
+    uri.has_path = false;
+    uri.has_query = false;
+    uri.has_frag = false;
+    uri.auth_port = 0;
+}
 
+void	parseUri(t_uri &uri, std::string req) {
+	init_struct(uri);
+	if (detectDelimiters(uri, req))
+		throw HttpException(400, "Bad Request: Invalid Delimiters");
 	if (uri.has_scheme) {
 		uri.scheme = extractUntil(req, SCHEME_DEL);
 		if (schemeCheck(uri))
-			//400 Bad Request
+			throw HttpException(400, "Bad Request: Invalid Delimiters");
 		
 		isHost(req);
 		if (uri.has_path || uri.has_query || uri.has_frag)
@@ -255,7 +269,7 @@ void	parseUri(t_uri &uri, std::string req) {
 		}
 		uri.path = -1;
 		if (authCheck(uri))
-			//400 Bad Request
+			throw HttpException(400, "Bad Request: Invalid Delimiters");
 	}
 	if (uri.has_path) {
 		if (uri.has_query || uri.has_frag) {
@@ -266,9 +280,8 @@ void	parseUri(t_uri &uri, std::string req) {
 			req.clear();
 		}
 		if (pathCheck(uri))
-			//400 Bad Request
+			throw HttpException(400, "Bad Request: Invalid Delimiters");
 	}
-
 	if (uri.has_query) {
 		if (uri.has_frag)
 			uri.query = extractUntil(req, QUERY_DEL);
@@ -277,9 +290,8 @@ void	parseUri(t_uri &uri, std::string req) {
 			req.clear();	
 		}
 	}
-
 	if (uri.has_frag) {
-		uri.frag = req;
+		uri.fragment = req;
 		req.clear();
 	}
 }
