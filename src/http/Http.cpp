@@ -30,6 +30,7 @@ void Http::HttpRoutine() {
 	if (bytes_read < 0) {
 		if (errno == EAGAIN || errno == EWOULDBLOCK)
 			return;
+		// Error
 	}
 	if (bytes_read == 0)
 		Http._status = FINISHED;
@@ -63,8 +64,11 @@ void Http::HttpRoutine() {
 		
 }
 
-
 //Getters
 HandleSocket	Http::getSocket {
     return this->_socket;
 }
+
+////////////////////////
+// Revisa si inicialitzes correctament la request i la response. 
+// - Maybe el constructor per defecte de request hauria de fer inicialitzacio basica. 
