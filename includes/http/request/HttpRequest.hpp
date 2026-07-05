@@ -56,7 +56,7 @@ class Http {
 	private:
 		State		state;
 		Request		&req;
-		Response	&res;
+		// Response	&res;
 
 	public:
 		//canonish;
