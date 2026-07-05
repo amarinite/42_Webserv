@@ -5,7 +5,7 @@
 bool testEmptyInputProducesEOF()
 {
 	std::vector<Token> tokens = Lexer::tokenize("");
-	
+
 	ASSERT(tokens.size() == 1);
 	ASSERT(tokens[0].type == TOKEN_EOF);
 	return true;
