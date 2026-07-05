@@ -2,16 +2,6 @@
 #include "Lexer.hpp"
 #include <iostream>
 
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
-
-typedef bool (*TestFn)();
-
-struct Test
-{
-	const char*	name;
-	TestFn		fn;
-};
-
 bool testEmptyInputProducesEOF()
 {
 	std::vector<Token> tokens = Lexer::tokenize("");
