@@ -23,30 +23,22 @@ Http &Http::operator=(const Http &other) {
 Http::~Http() {}
 
 //Functs
-void Http::HttpRoutine() {
-	char buff[1024];
+void Http::HttpRoutine(char *buff) {
 
-	int bytes_read = recv(this.socket.getFD(), &buff, 1024, 0);
-	if (bytes_read < 0) {
-		if (errno == EAGAIN || errno == EWOULDBLOCK)
-			return;
-		// Error
-	}
-	if (bytes_read == 0)
-		Http._status = FINISHED;
-
-	switch(Http._status) {
+	switch(this->_status) {
 		case READING_HEADERS: {
-			if (Http._request.parseRequestHead(&buff))
-				Http._status = READING_BODY;
-			if (http.request._headRead)
-				if (Http._request.parseRequestBody(&buff))
-					Http._status = PROCESSING;
+			if (this->_request.parseRequestHead(&buff)) {
+				this->_status = READING_BODY;
+				if (buff && *buff != '\0') {
+					if (this->_request.parseRequestBody(&buff))
+						this->_status = PROCESSING;
+				}
+			}
 			break;
 		}
 		case READING_BODY: {
-			if (Http._request.parseRequestBody(&buff))
-				Http._status = PROCESSING;
+			if (this->_request.parseRequestBody(&buff))
+				this->_status = PROCESSING;
 			break;
 		}
 		case PROCESSING: {
@@ -60,8 +52,7 @@ void Http::HttpRoutine() {
 			// Segurament no fa falta.
 			break;
 		}
-	}
-		
+	}	
 }
 
 //Getters

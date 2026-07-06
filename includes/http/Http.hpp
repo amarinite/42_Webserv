@@ -12,10 +12,11 @@ enum class State {
 
 class Http {
 	private:
-		HandleSocket _socket;
-		State		_state;
+		// Config goes here.
+		State		_status;
 		Request		&_req;
 		Response	&_res;
+		
 
 		//Functs
 		void HttpRoutine();
