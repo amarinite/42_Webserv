@@ -1,79 +1,116 @@
 #include "SocketManager.hpp"
 
-HandleSocket::HandleSocket() : _host(""), _port(-1), _fd(-1)
+SocketManager::SocketManager(const std::string &host, const int &port) :
+	_listener(host, port)
 {
-	std::cout << "Como hemos llegado aqui?" << std::endl;
 }
 
-HandleSocket::HandleSocket(const std::string &host, const int &port) :
-	_host(host),
-	_port(port),
-	_fd(-1)
+SocketManager::~SocketManager()
 {
-
-	std::cout << "Socket creado exitosamente" << std::endl;
+	for (size_t i = 0; i < _clients.size(); i++)
+		delete _clients[i];
 }
 
-HandleSocket::HandleSocket(const HandleSocket &other) :
-	_host(other._host),
-	_port(other._port),
-	_fd(other._fd),
-	_addr(other._addr),
-	_addrLen(other._addrLen)
+void SocketManager::setup()
 {
-	std::cout << "Other socket creado" << std::endl;
+	_listener.createSocket();
+	_listener.setReuseAddr();
+	_listener.bindSocket();
+	_listener.listenSocket();
+	_listener.setNonBlocking();
+
+	struct pollfd listenerPfd;
+	listenerPfd.fd = _listener.getFD();
+	listenerPfd.events = POLLIN;
+	listenerPfd.revents = 0;
+
+	_pollFds.push_back(listenerPfd);
+
+	std::cout << "SocketManager Listo, escuchando en el puerto " << _listener.getPort() << " con fd " << _listener.getFD() << std::endl;
 }
 
-HandleSocket::~HandleSocket()
+void SocketManager::run()
 {
-	if (_fd != -1)
-		close(_fd);
-	std::cout << "Socket Destructor called" << std::endl;
-}
-
-HandleSocket &HandleSocket::operator=(const HandleSocket &other)
-{
-	if (this != &other)
+	while (true)
 	{
-		this->_host = other._host;
-		this->_port = other._port;
-		this->_fd  = other._fd;
-		this->_addr = other._addr;
-		this->_addrLen = other._addrLen;
+		int ready = poll(&_pollFds[0], _pollFds.size(), -1);
+		if (ready < 0)
+			throw std::runtime_error("poll() failed");
+		for (size_t i = 0; i < _pollFds.size(); i++)
+		{
+			if (!(_pollFds[i].revents & POLLIN))
+				continue;
+			if (_pollFds[i].fd == _listener.getFD())
+				handleNewConnection();
+			else
+			{
+				handleClientData(i);
+				break;
+			}
+		}
 	}
-	return *this;
 }
 
-//Getters
-
-int HandleSocket::getFD() const
+void SocketManager::addToPoll(int fd)
 {
-	return this->_fd;
+	struct pollfd newPfd;
+	newPfd.fd = fd;
+	newPfd.events = POLLIN;
+	newPfd.revents = 0;
+	_pollFds.push_back(newPfd);
 }
 
-int HandleSocket::getPort() const
+void SocketManager::handleNewConnection()
 {
-	return this->_port;
+	struct sockaddr_storage clientAddr;
+	socklen_t addrLen = sizeof(clientAddr);
+
+	int clientFd = accept(_listener.getFD(), (struct sockaddr*)&clientAddr, &addrLen);
+
+	if (clientFd < 0)
+		return;
+
+	HandleSocket *client = new HandleSocket(clientFd, clientAddr, addrLen);
+	client->setNonBlocking();
+
+	_clients.push_back(client);
+	addToPoll(clientFd);
+
+	std::cout << "Nuevos clientes, fd " << clientFd << std::endl;
 }
 
-std::string HandleSocket::getHost() const
+void SocketManager::handleClientData(size_t pollIndex)
 {
-	return this->_host;
+	int fd = _pollFds[pollIndex].fd;
+	char buffer[1024];
+
+	ssize_t bytes = recv(fd, buffer, sizeof(buffer), 0);
+
+	if (bytes <= 0)
+	{
+		disconnectClient(pollIndex);
+		return;
+	}
+
+	std::cout << "Recibidos " << bytes << " bytes del fd " << fd << std::endl;
 }
 
-//Setters
-
-void HandleSocket::setFD(const int &fd)
+void SocketManager::disconnectClient(size_t pollIndex)
 {
-	this->_fd = fd;
-}
+	int fd = _pollFds[pollIndex].fd;
 
-void HandleSocket::setPort(const int &port)
-{
-	this->_port = port;
-}
+	for (size_t i = 0; i < _clients.size(); i++)
+	{
+		if (_clients[i]->getFD() == fd)
+		{
+			delete _clients[i];
+			_clients.erase(_clients.begin() + i);
+			break;
+		}
+	}
 
-void HandleSocket::setHost(const std::string &host)
-{
-	this->_host = host;
+	_pollFds.erase(_pollFds.begin() + pollIndex);
+
+	std::cout << "Cliente desconectado, fd: " << fd << std::endl;
+
 }

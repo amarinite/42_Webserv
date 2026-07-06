@@ -1,42 +1,26 @@
 #pragma once
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <cstring>
-#include <string>
-#include <sstream>
-#include <netdb.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <iostream>
+#include "SocketHandler.hpp"
+#include <vector>
+#include <poll.h>
 
-class HandleSocket
+class SocketManager
 {
-	private:
-		std::string _host;
-		int _port;
-		int _fd;
-		struct sockaddr_storage _addr;
-		socklen_t _addrLen;
-	public:
-		HandleSocket();
-		HandleSocket(const std::string &host, const int &port);
-		HandleSocket(const HandleSocket &other);
-		HandleSocket &operator=(const HandleSocket &other);
-		~HandleSocket();
-	//Functs
-		void createSocket();
-		void setReuseAddr();
-		void bindSocket();
-		void listenSocket();
-		void setNonBlocking();
-	//Getters
-		int getFD() const;
-		int getPort() const;
-		std::string getHost() const;
-	//Setters
-		void setFD(const int &fd);
-		void setPort(const int &port);
-		void setHost(const std::string &host);
+private:
+	HandleSocket _listener;
+	std::vector<HandleSocket*> _clients;
+	std::vector<struct pollfd> _pollFds;
 
+	void addToPoll(int fd);
+	void removeFromPoll(size_t index);
+	void handleNewConnection();
+	void handleClientData(size_t pollIndex);
+	void disconnectClient(size_t pollIndex);
+public:
+	SocketManager(const std::string &host, const int &port);
+	~SocketManager();
+
+	// Functs
+	void setup();
+	void run();
 };
