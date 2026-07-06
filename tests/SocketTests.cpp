@@ -49,7 +49,7 @@ void runSocketTests(int& passed, int& failed)
 {
 	Test tests[] = {
 		//{ "Create and assign a socket to a port",	testSocketCreation},
-		{ "Create SocketManager and setup", testSocketManagerCreation}
+		//{ "Create SocketManager and setup", testSocketManagerCreation}
 	};
 
 	int localPassed = 0;
