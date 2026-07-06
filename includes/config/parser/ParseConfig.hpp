@@ -28,6 +28,18 @@ struct Node
 	}
 };
 
+std::vector<Node*> getChildrenByType(const Node* parent, NodeType type, const std::string& name = "")
+{
+	std::vector<Node*> result;
+	for (std::size_t i = 0; i < parent->children.size(); ++i)
+	{
+		Node* child = parent->children[i];
+		if (child->type == type && (name.empty() || child->name == name))
+			result.push_back(child);
+	}
+	return result;
+}
+
 class ParseConfig
 {
 	private:
