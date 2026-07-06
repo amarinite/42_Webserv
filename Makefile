@@ -1,6 +1,6 @@
 NAME = webserv
 SRC_DIR = src
-SRC = main.cpp
+SRC := $(shell find $(SRC_DIR) -name '*.cpp' | sed 's|^$(SRC_DIR)/||')
 
 TOTAL_SRCS = $(words $(SRC))
 
@@ -14,11 +14,7 @@ BLUE        = \033[1;36m
 GREEN       = \033[1;32m
 
 CXX = c++
-INC_DIR = ./includes \
-			./includes/config \
-			./includes/config/parser \
-			./includes/network \
-			./includes/utils
+INC_DIR := $(shell find ./includes -type d)
 
 ALL_INC = $(addprefix -I, $(INC_DIR))
 CXXFLAGS = -Wall -Wextra -Werror -std=c++98 $(ALL_INC)
@@ -26,18 +22,10 @@ CXXFLAGS = -Wall -Wextra -Werror -std=c++98 $(ALL_INC)
 TEST_DIR        = tests
 TEST_OBJ_DIR    = obj/tests
 TEST_NAME       = test_runner
-TEST_SRC        = $(TEST_DIR)/test.cpp \
-                  $(TEST_DIR)/LexerTests.cpp \
-                  $(TEST_DIR)/ParseConfigTests.cpp \
-                  $(TEST_DIR)/SocketTests.cpp \
-                  $(TEST_DIR)/UriTests.cpp
-TEST_DEPS        = src/config/parser/Lexer.cpp \
-                  src/config/parser/ParseConfig.cpp \
-                  src/network/SocketManager.cpp \
-                  src/network/Sockets.cpp \
-                  src/utils/UriParser.cpp
+TEST_SRC		:= $(shell find $(TEST_DIR) -name '*.cpp')
+TEST_DEPS		:= $(filter-out main.cpp,$(SRC))
 TEST_OBJ        = $(TEST_SRC:$(TEST_DIR)/%.cpp=$(TEST_OBJ_DIR)/%.o) \
-                  $(TEST_DEPS:src/%.cpp=$(TEST_OBJ_DIR)/deps/%.o)
+                  $(TEST_DEPS:%.cpp=$(TEST_OBJ_DIR)/deps/%.o)
 
 all: $(NAME)
 
