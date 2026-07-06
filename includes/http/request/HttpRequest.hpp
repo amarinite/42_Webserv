@@ -6,6 +6,10 @@
 
 class Request {
 	private:
+	
+		std::string _stream;
+		char *_streamLeftover;
+
 		std::string _method;
 		t_uri		_uri;
 		std::string	_httpVer;
@@ -22,6 +26,11 @@ class Request {
 
 		std::string _uriStr;
 		std::string _leftover;
+
+		bool _parsedKey;
+		bool _parsedValue;
+
+		size_t _streamLeft;
 		
 
 		//Functs
@@ -30,7 +39,10 @@ class Request {
 		bool parseRequestBody(char *stream);
 		// Will call this functs staticlly.
 		// Since they cannot be called independently if've chosen this way.
-		bool parseMethod(std::stringstream &ss)
+		bool parseMethod(std::stringstream &ss);
+		static bool findKey(std::string &key);
+		static bool findValue(std::string &value);
+		static void addHeader(bool key, bool value)
 		// - static void parseHeaders();
 		// - static void parseBody();
 
