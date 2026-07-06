@@ -3,7 +3,7 @@
 #include <utility>
 #include <vector>
 #include <iostream>
-#include "Token.hpp"
+#include "Lexer.hpp"
 #include "ConfigException.hpp"
 
 enum NodeType { NODE_DIR, NODE_BLOCK };
@@ -28,7 +28,7 @@ struct Node
 	}
 };
 
-std::vector<Node*> getChildrenByType(const Node* parent, NodeType type, const std::string& name = "")
+inline std::vector<Node*> getChildrenByType(const Node* parent, NodeType type, const std::string& name = "")
 {
 	std::vector<Node*> result;
 	for (std::size_t i = 0; i < parent->children.size(); ++i)
