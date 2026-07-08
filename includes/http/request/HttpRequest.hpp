@@ -4,25 +4,34 @@
 #include <map>
 #include <vector>
 
+enum BodyType {
+	EMPTY,
+    FULL,
+    CHUNKED,
+	OTHER
+};
+
 class Request {
 	private:
-	
-		std::string _stream;
-		char *_streamLeftover;
-
+		// Method
 		std::string _method;
 		t_uri		_uri;
 		std::string	_httpVer;
 		
+		//Headers
 		std::map<std::string, std::string>  _headers;
+
+		//Body
 		std::vector<char>	_body;
-		
+
+		// Comprovacions i validacions
+		std::string				_stream;
+		std::vector<char>		_streamBody;
+
+		// Head Parser
 		bool _methodParsed;
 		bool _uriParsed;
 		bool _httpVerParsed;
-		
-		bool _headRead;
-		bool _bodyRead;
 
 		std::string _uriStr;
 		std::string _leftover;
@@ -30,13 +39,20 @@ class Request {
 		bool _parsedKey;
 		bool _parsedValue;
 
-		size_t _streamLeft;
+		size_t	_streamLeft;
+		bool	_incompleteEndLine;
 		
+		std::string _tmpKey;
+		std::string _tmpVal;
+
+		// Body Parse
+		int		_bodyType;
+		size_t	_bodyTotalSize;
 
 		//Functs
 		//void recieveRawRequest();
-		bool parseRequestHead(char *stream);
-		bool parseRequestBody(char *stream);
+		bool parseRequestHead();
+		bool parseRequestBody();
 		// Will call this functs staticlly.
 		// Since they cannot be called independently if've chosen this way.
 		bool parseMethod(std::stringstream &ss);
@@ -54,7 +70,7 @@ class Request {
 
 	//Getters
 		
-		t_method		getMethod;
+		t_method	getMethod;
 		std::map<std::string, std::string>  getHeaders;
 		std::vector<char>	getBody;
 };
