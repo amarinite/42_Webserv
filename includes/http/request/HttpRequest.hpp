@@ -46,8 +46,10 @@ class Request {
 		std::string _tmpVal;
 
 		// Body Parse
-		int		_bodyType;
-		size_t	_bodyTotalSize;
+		int				_bodyType;
+		size_t			_maxBodySize;
+		vector<char>	_leftoverBody;
+		bool			_chunkSize;
 
 		//Functs
 		//void recieveRawRequest();
