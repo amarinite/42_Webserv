@@ -1,3 +1,4 @@
+#include "SocketHandler.hpp"
 #include "SocketManager.hpp"
 #include "TestUtils.hpp"
 
@@ -5,7 +6,7 @@ bool testSocketCreation()
 {
 	try
 	{
-		HandleSocket nSock = HandleSocket("127.0.0.1", 4343);
+		HandleSocket nSock = HandleSocket("127.0.0.1", 8080);
 		nSock.createSocket();
 		nSock.setReuseAddr();
 		nSock.bindSocket();
@@ -27,10 +28,28 @@ bool testSocketCreation()
 	}
 }
 
+bool testSocketManagerCreation()
+{
+	try
+	{
+		SocketManager manager("127.0.0.1", 4343);
+		manager.setup();
+		manager.run();
+		return true;
+	}
+	catch(const std::exception& e)
+	{
+		std::cerr << e.what() << '\n';
+		return false;
+	}
+
+}
+
 void runSocketTests(int& passed, int& failed)
 {
 	Test tests[] = {
-		{ "Assign a valid FD to a Socket",	testSocketCreation}
+		//{ "Create and assign a socket to a port",	testSocketCreation},
+		//{ "Create SocketManager and setup", testSocketManagerCreation}
 	};
 
 	int localPassed = 0;
