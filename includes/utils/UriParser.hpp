@@ -11,7 +11,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
-typedef struct {
+struct t_uri {
 	bool		has_scheme;
 	std::string scheme;
 
@@ -36,7 +36,7 @@ typedef struct {
 			has_frag(false), fragment()
 	{}
 	
-}	t_uri;
+};
 
 void	parseUri(t_uri &uri, std::string req);
 

@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <map>
+#include "ParseConfig.hpp"
 #include "UriParser.hpp"
 
 class ServerConfig;

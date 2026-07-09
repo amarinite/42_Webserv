@@ -4,15 +4,6 @@
 #define RED   "\033[1;31m"
 #define GREEN "\033[1;32m"
 #define CYAN  "\033[1;36m"
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
-
-typedef bool (*TestFn)();
-
-struct Test
-{
-	const char*	name;
-	TestFn		fn;
-};
 
 #define ASSERT(condition) \
 	if (!(condition)) { \

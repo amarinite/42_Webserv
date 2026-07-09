@@ -34,7 +34,7 @@ ServerConfig ServerConfig::build(Node* serverRoot)
 	for (size_t i = 0; i < locationNodes.size(); i++)
 	{
 		LocationConfig loc = LocationConfig::build(locationNodes[i], config);
-		if (loc.getPath() == "/")
+		if (loc.getPath().path == "/")
 			hasRootLocation = true;
 		config._locations.push_back(loc);
 	}
@@ -59,7 +59,7 @@ void ServerConfig::setErrorPage(const Node* n)
 	int code = parseNumber(n->args[0]);
 
 	t_uri uri;
-	parseUri(&uri, n->args[1]);
+	parseUri(uri, n->args[1]);
 	_error_pages[code] = uri;
 }
 
@@ -72,7 +72,7 @@ void ServerConfig::setClientMaxBodySize(const Node* n)
 void ServerConfig::setRoot(const Node* n)
 {
 	t_uri uri;
-	parseUri(&uri, n->args[0]);
+	parseUri(uri, n->args[0]);
 
 	_root = uri;
 }
@@ -124,7 +124,7 @@ const LocationConfig& ServerConfig::getLocationConfig(const t_uri& uri) const
 
 	for (size_t i = 0; i < _locations.size(); ++i)
 	{
-		const std::string& locPath = _locations[i].getPath();
+		const std::string& locPath = _locations[i].getPath().path;
 		if (isValidMatch(uri.path, locPath) && locPath.size() > bestLen)
 		{
 			best = &_locations[i];

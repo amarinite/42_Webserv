@@ -75,13 +75,21 @@ Node *ParseConfig::parseBlock(const std::string &name, const std::vector<std::st
 							: (name == "location") ? LOCATION_CTXT 
 							: ctxt;
 
-	while(current().type != TOKEN_RBRACE)
+	try
 	{
-		if (current().type == TOKEN_EOF)
-			unexpected(current(), "unclosed brace");
-		newNode->children.push_back(parseStatement(childCtxt));
+		while (current().type != TOKEN_RBRACE)
+		{
+			if (current().type == TOKEN_EOF)
+				unexpected(current(), "unclosed brace");
+			newNode->children.push_back(parseStatement(childCtxt));
+		}
+		expect(TOKEN_RBRACE, "expected '}'");
 	}
-	expect(TOKEN_RBRACE, "expected '}'");
+	catch (...)
+	{
+		delete newNode;
+		throw;
+	}
 	return newNode;
 }
 

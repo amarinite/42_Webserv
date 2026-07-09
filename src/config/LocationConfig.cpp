@@ -22,10 +22,16 @@ std::map<std::string, LocationConfig::DirectiveHandler> LocationConfig::initHand
 
 LocationConfig LocationConfig::build(Node* locationNode, const ServerConfig& parent)
 {
-	static std::map<std::string, DirectiveHandler> handlers = initHandlers();
 	LocationConfig config;
 
-	config._path = locationNode->args[0];
+	config._root = parent.getRoot();
+	config._index = parent.getIndex();
+
+	static std::map<std::string, DirectiveHandler> handlers = initHandlers();
+
+	t_uri uri;
+	parseUri(uri, locationNode->args[0]);
+	config._path = uri;
 
 	std::vector<Node *> directiveNodes = getChildrenByType(locationNode, NODE_DIR);
 	for (size_t i = 0; i < directiveNodes.size(); i++)
@@ -44,7 +50,7 @@ LocationConfig LocationConfig::buildDefault(const ServerConfig& parent)
 {
 	LocationConfig config;
 	t_uri uri;
-	parseUri(&uri, "/");
+	parseUri(uri, "/");
 
 	config._path = uri;
 	config._root = parent.getRoot();
@@ -55,6 +61,7 @@ LocationConfig LocationConfig::buildDefault(const ServerConfig& parent)
 
 void LocationConfig::setAllowedMethods(const Node* n)
 {
+	_allowed_methods.clear();
 	for (size_t i = 0; i < n->args.size(); i++)
 		_allowed_methods.push_back(n->args[i]);
 }
@@ -62,7 +69,7 @@ void LocationConfig::setAllowedMethods(const Node* n)
 void LocationConfig::setRedirect(const Node* n)
 {
 	t_uri uri;
-	parseUri(&uri, n->args[0]);
+	parseUri(uri, n->args[0]);
 
 	_redirect = uri;
 }
@@ -75,7 +82,7 @@ void LocationConfig::setAutoindex(const Node* n)
 void LocationConfig::setUploadStore(const Node* n)
 {
 	t_uri uri;
-	parseUri(&uri, n->args[0]);
+	parseUri(uri, n->args[0]);
 
 	_upload_store = uri;
 }
@@ -84,7 +91,7 @@ void LocationConfig::setCgiExtension(const Node* n)
 {
 	std::string ext = n->args[0];
 	t_uri uri;
-	parseUri(&uri, n->args[1]);
+	parseUri(uri, n->args[1]);
 
 	_cgi_extension[ext] = uri;
 }
@@ -92,7 +99,7 @@ void LocationConfig::setCgiExtension(const Node* n)
 void LocationConfig::setRoot(const Node* n)
 {
 	t_uri uri;
-	parseUri(&uri, n->args[0]);
+	parseUri(uri, n->args[0]);
 
 	_root = uri;
 }
