@@ -1,5 +1,5 @@
 #pragma once
-#include "<string>"
+#include <string>
 
 struct ListenAddr
 {
@@ -7,4 +7,10 @@ struct ListenAddr
 	int			port;
 };
 
-ListenAddr parseListenArg(const std::string& arg);
+inline bool operator==(const ListenAddr& a, const ListenAddr& b)
+{
+	return a.host == b.host && a.port == b.port;
+}
+
+int			parseNumber(const std::string& str);
+ListenAddr	parseListenArg(const std::string& arg);

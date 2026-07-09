@@ -1,5 +1,10 @@
 #include "ServerConfig.hpp"
 
+ServerConfig::ServerConfig()
+	: _client_max_body_size(1000000), _index("index.html")
+{
+}
+
 std::map<std::string, ServerConfig::DirectiveHandler> ServerConfig::initHandlers()
 {
 	std::map<std::string, DirectiveHandler> m;
@@ -16,10 +21,6 @@ ServerConfig ServerConfig::build(Node* serverRoot)
 	static std::map<std::string, DirectiveHandler> handlers = initHandlers();
 	ServerConfig config;
 
-	std::vector<Node*> locationNodes = getChildrenByType(serverRoot, NODE_BLOCK, "location");
-	for (size_t i = 0; i < locationNodes.size(); i++)
-		config._locations.push_back(LocationConfig::build(locationNodes[i]));
-
 	std::vector<Node*> directiveNodes = getChildrenByType(serverRoot, NODE_DIR);
 	for (size_t i = 0; i < directiveNodes.size(); ++i)
 	{
@@ -27,6 +28,20 @@ ServerConfig ServerConfig::build(Node* serverRoot)
 		if (it != handlers.end())
 			(config.*(it->second))(directiveNodes[i]);
 	}
+
+	bool hasRootLocation = false;
+	std::vector<Node*> locationNodes = getChildrenByType(serverRoot, NODE_BLOCK, "location");
+	for (size_t i = 0; i < locationNodes.size(); i++)
+	{
+		LocationConfig loc = LocationConfig::build(locationNodes[i], config);
+		if (loc.getPath() == "/")
+			hasRootLocation = true;
+		config._locations.push_back(loc);
+	}
+
+	if (!hasRootLocation)
+		config._locations.push_back(LocationConfig::buildDefault(config));
+
 	return config;
 }
 
@@ -42,10 +57,10 @@ void ServerConfig::setListen(const Node* n)
 void ServerConfig::setErrorPage(const Node* n)
 {
 	int code = parseNumber(n->args[0]);
+
 	t_uri uri;
 	parseUri(&uri, n->args[1]);
-
-	_error_pages.push_back(std::make_pair(code, uri));
+	_error_pages[code] = uri;
 }
 
 void ServerConfig::setClientMaxBodySize(const Node* n)
@@ -72,7 +87,7 @@ const std::vector<ListenAddr>& ServerConfig::getListen() const
 	return _listen;
 }
 
-const std::vector<std::pair<int, t_uri> >& ServerConfig::getErrorPages() const
+const std::map<int, t_uri>& ServerConfig::getErrorPages() const
 {
 	return _error_pages;
 }
@@ -97,7 +112,24 @@ const std::vector<LocationConfig>& ServerConfig::getLocations() const
 	return _locations;
 }
 
+bool isValidMatch(const std::string& reqPath, const std::string& configPath)
+{
+	return reqPath.compare(0, configPath.size(), configPath) == 0;
+}
+
 const LocationConfig& ServerConfig::getLocationConfig(const t_uri& uri) const
 {
-	// ...
+	const LocationConfig* best = NULL;
+	size_t bestLen = 0;
+
+	for (size_t i = 0; i < _locations.size(); ++i)
+	{
+		const std::string& locPath = _locations[i].getPath();
+		if (isValidMatch(uri.path, locPath) && locPath.size() > bestLen)
+		{
+			best = &_locations[i];
+			bestLen = locPath.size();
+		}
+	}
+	return *best;
 }

@@ -27,6 +27,15 @@ typedef struct {
 
 	bool		has_frag;
 	std::string fragment;
+
+	t_uri()
+		: has_scheme(false), scheme(),
+			has_auth(false), authority(), auth_port(0),
+			has_path(false), path(),
+			has_query(false), query(),
+			has_frag(false), fragment()
+	{}
+	
 }	t_uri;
 
 void	parseUri(t_uri &uri, std::string req);
@@ -34,19 +43,19 @@ void	parseUri(t_uri &uri, std::string req);
 #include <exception>
 
 class HttpException : public std::exception {
-private:
-    int _statusCode;
-    std::string _message;
+	private:
+		int _statusCode;
+		std::string _message;
 
-public:
-    HttpException(int code, const std::string& msg) : _statusCode(code), _message(msg) {}
-    virtual ~HttpException() throw() {}
+	public:
+		HttpException(int code, const std::string& msg) : _statusCode(code), _message(msg) {}
+		virtual ~HttpException() throw() {}
 
-    virtual const char* what() const throw() {
-        return _message.c_str();
-    }
+		virtual const char* what() const throw() {
+			return _message.c_str();
+		}
 
-    int getStatusCode() const {
-        return _statusCode;
-    }
+		int getStatusCode() const {
+			return _statusCode;
+		}
 };

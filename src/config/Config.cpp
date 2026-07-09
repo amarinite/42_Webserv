@@ -15,12 +15,17 @@ const std::vector<ServerConfig>& Config::getServers() const
 	return _servers;
 }
 
-const ServerConfig& Config::getServer(std::pair<std::string, int> ip_port) const
+const ServerConfig& Config::getServer(const ListenAddr& ipPort) const
 {
 	for (size_t i = 0; i < _servers.size(); i++)
 	{
-		if (ip_port == _servers[i].getListen())
-			return _servers[i];
+		for (size_t j = 0; j < _servers[i].getListen().size(); j++)
+		{
+			if (ipPort == _servers[i].getListen()[j])
+				return _servers[i];
+		}
 	}
-	return NULL;
+
+	// IS THIS POSSIBLE? PREGUNTAR ISAAC
+	throw std::runtime_error("Config::getServer: no server for given ip:port");
 }
