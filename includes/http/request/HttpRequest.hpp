@@ -3,6 +3,9 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <cctype>
+#include <cstdlib>
+#include "UriParser.hpp"
 
 enum BodyType {
 	EMPTY,
@@ -16,69 +19,73 @@ class Request {
 		// Method
 		std::string _method;
 		t_uri		_uri;
+		std::string _uriStr;
 		std::string	_httpVer;
 		
 		//Headers
 		std::map<std::string, std::string>  _headers;
+		std::string _tmpKey;
+		std::string _tmpVal;
 
 		//Body
-		std::vector<char>	_body;
+		std::string	_body;
 
-		// Comprovacions i validacions
-		std::string		_stream;
-		std::string		_streamBody;
+		// Buffers
+		std::string	_stream;
+		std::string	_streamBody;
+		std::string _leftover;
+		std::string	_leftoverBody;
 
 		// Head Parser
 		bool _methodParsed;
 		bool _uriParsed;
 		bool _httpVerParsed;
-
-		std::string _uriStr;
-		std::string _leftover;
-
 		bool _parsedKey;
 		bool _parsedValue;
-
-		size_t	_streamLeft;
-		bool	_incompleteEndLine;
+		bool _incompleteEndLine;
 		
-		std::string _tmpKey;
-		std::string _tmpVal;
-
 		// Body Parse
-		int				_bodyType;
-		size_t			_maxBodySize;
-		std::string		_leftoverBody;
-		bool			_chunkSize;
+		BodyType	_bodyType;
+		size_t		_maxBodySize;
+		bool		_chunkSize;
 
 		//Functs
-		//void recieveRawRequest();
-		bool parseRequestHead();
-		bool parseRequestBody();
-		// Will call this functs staticlly.
-		// Since they cannot be called independently if've chosen this way.
-		bool parseMethod(std::stringstream &ss);
-		static bool findKey(std::string &key);
-		static bool findValue(std::string &value);
-		static void addHeader(bool key, bool value)
-		// - static void parseHeaders();
-		// - static void parseBody();
+		// Head
 
+		bool hasHeader(std::string &str);
+		bool parseHeaders();
+		void addHeader();
+		bool findValue(std::string &_tmpValue);
+		bool findKey();
+		bool parseMethod();
+		bool safeEnd();
+
+		// Body
+		bool chunkedBody();
+		bool fullBody();
+		void setBodyType();
+		
 	public:
 		Request();
 		Request(const Request &other);
 		Request &operator=(const Request &other);
 		~Request();
 
-	//Getters
+		// Public Functs
+		bool parseRequestHead();
+		bool parseRequestBody();
 		
-		t_method	getMethod;
-		std::map<std::string, std::string>  getHeaders;
-		std::vector<char>	getBody;
+		//Getters
+		std::string	getMethod();
+		std::map<std::string, std::string>  getHeaders();
+		std::string	getBody();
+
+		// Testing only
+		void feedStream(const std::string &data) {
+            this->_stream += data;
+        }
+
+        void feedBody(const std::string &data) {
+            this->_streamBody += data;
+        }
 };
-
-///////////////////////////////////////////////////////
-
-// Acaba de decidir com fas el http general
-// Acaba de dissenyar el flow de la maquina d'estats.
-// Parseja requests.

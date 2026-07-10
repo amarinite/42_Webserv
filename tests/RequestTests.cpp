@@ -5,10 +5,12 @@
 static bool testSimpleGetRequest()
 {
 	Request req;
-	req._stream = "GET /index.html HTTP/1.1\r\nHost: localhost\r\nUser-Agent: Mozilla\r\n\r\n";
+
+	req.feedStream("GET /index.html HTTP/1.1\r\nHost: localhost\r\nUser-Agent: Mozilla\r\n\r\n");
 
 	ASSERT(req.parseRequestHead() == true);
-	ASSERT(req.getMethod() == "GET"); // O el enum correspondiente si usas t_method
+	
+	ASSERT(req.getMethod() == "GET"); 
 	
 	std::map<std::string, std::string> headers = req.getHeaders();
 	ASSERT(headers.count("host") == 1);
@@ -22,7 +24,7 @@ static bool testSimpleGetRequest()
 static bool testMissingHostHeaderThrows()
 {
 	Request req;
-	req._stream = "GET /index.html HTTP/1.1\r\nUser-Agent: Mozilla\r\n\r\n";
+	req.feedStream("GET /index.html HTTP/1.1\r\nUser-Agent: Mozilla\r\n\r\n");
 
 	try {
 		req.parseRequestHead();
@@ -40,7 +42,7 @@ static bool testMissingHostHeaderThrows()
 static bool testHeaderValueTrimmingWithInternalSpaces()
 {
 	Request req;
-	req._stream = "POST /api HTTP/1.1\r\nHost:   localhost:8080   \r\nContent-Type:  text/html; charset=utf-8  \r\n\r\n";
+	req.feedStream("POST /api HTTP/1.1\r\nHost:   localhost:8080   \r\nContent-Type:  text/html; charset=utf-8  \r\n\r\n");
 
 	ASSERT(req.parseRequestHead() == true);
 	
@@ -54,7 +56,7 @@ static bool testHeaderValueTrimmingWithInternalSpaces()
 static bool testHeaderKeysAreCaseInsensitive()
 {
 	Request req;
-	req._stream = "GET / HTTP/1.1\r\nHOsT: example.com\r\nCONTENT-leNGTH: 0\r\n\r\n";
+	req.feedStream("GET / HTTP/1.1\r\nHOsT: example.com\r\nCONTENT-leNGTH: 0\r\n\r\n");
 
 	ASSERT(req.parseRequestHead() == true);
 	
@@ -70,7 +72,7 @@ static bool testHeaderKeysAreCaseInsensitive()
 static bool testDuplicateCriticalHeadersThrows()
 {
 	Request req;
-	req._stream = "GET / HTTP/1.1\r\nHost: localhost\r\nHost: duplicate.com\r\n\r\n";
+	req.feedStream("GET / HTTP/1.1\r\nHost: localhost\r\nHost: duplicate.com\r\n\r\n");
 
 	try {
 		req.parseRequestHead();
@@ -81,7 +83,7 @@ static bool testDuplicateCriticalHeadersThrows()
 	}
 
 	Request req2;
-	req2._stream = "POST / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\nContent-Length: 10\r\n\r\n";
+	req2.feedStream("POST / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\nContent-Length: 10\r\n\r\n");
 	try {
 		req2.parseRequestHead();
 		ASSERT(false);
@@ -95,15 +97,16 @@ static bool testDuplicateCriticalHeadersThrows()
 static bool testFullBodyParsing()
 {
 	Request req;
-	req._stream = "POST /submit HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\n\r\n";
+	req.feedStream("POST /submit HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\n\r\n");
 	
 	ASSERT(req.parseRequestHead() == true);
 	
-	req._streamBody = "Hello";
+	// Alimentamos el buffer de body
+	req.feedBody("Hello");
 	
-	ASSERT(req.parseRequestBody() == true); // Debería retornar true al completarse
+	ASSERT(req.parseRequestBody() == true);
 	
-	std::vector<char> bodyVec = req.getBody();
+	std::string bodyVec = req.getBody();
 	std::string bodyStr(bodyVec.begin(), bodyVec.end());
 	ASSERT(bodyStr == "Hello");
 
@@ -113,17 +116,18 @@ static bool testFullBodyParsing()
 static bool testChunkedBodyParsing()
 {
 	Request req;
-	req._stream = "POST /stream HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n";
+	req.feedStream("POST /stream HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n");
 	
 	ASSERT(req.parseRequestHead() == true);
 
-	req._streamBody = "5\r\nHello\r\n";
-	ASSERT(req.parseRequestBody() == false); // Todavía falta el chunk final '0'
+	req.feedBody("5\r\nHello\r\n");
+	ASSERT(req.parseRequestBody() == false);
 
-	req._streamBody += "0\r\n\r\n";
-	ASSERT(req.parseRequestBody() == true); // Completado
 
-	std::vector<char> bodyVec = req.getBody();
+	req.feedBody("0\r\n\r\n");
+	ASSERT(req.parseRequestBody() == true);
+
+	std::string bodyVec = req.getBody();
 	std::string bodyStr(bodyVec.begin(), bodyVec.end());
 	ASSERT(bodyStr == "Hello");
 
