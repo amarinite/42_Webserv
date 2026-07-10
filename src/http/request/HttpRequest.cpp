@@ -1,6 +1,6 @@
 #include "HttpRequest.hpp"
 
-Request::Request() : _headRead(false), _bodyRead(false) {}
+Request::Request() : _headRead(false), _bodyRead(false), _leftover(NULL) {}
 
 Request::Request(const Request &other) {
 	this = other;
@@ -16,9 +16,28 @@ Request &Request::operator=(const Request &other) {
 	return *this;
 }
 
-Request::~Request() {}
+Request::~Request() {
+}
 
 // Functs
+void Request::assignLeftover(std::vector<char> &vec) {
+	delete[] _leftover;
+	_leftover = new char[vec.size() + 1];
+	for (size_t i = 0; i < vec.size(); ++i) {
+		_leftover[i] = vec[i];
+	}
+	_leftover[vec.size()] = '\0';
+}
+
+void Request::assignLeftover(std::string &str) {
+	delete[] _leftover;
+	_leftover = new char[str.size() + 1];
+	for (size_t i = 0; i < str.size(); ++i) {
+		_leftover[i] = str[i];
+	}
+	_leftover[str.size()] = '\0';
+}
+
 static void tolowerStr(std::string &str) {
 	for (size_t i = 0; i < str.size(); ++i) {
 		unsigned char c = static_cast<char>(str[i]);
@@ -148,7 +167,7 @@ bool Request::parseHeaders() {
 	if (pos == std::string::npos || pos != 0) {
 		this->_parsedKey = false;
 		this->_parsedValue = false;
-		_leftover = _stream;
+		assignLeftover(_stream);
 		_stream.clear();
 		return false;
 	}
@@ -157,21 +176,18 @@ bool Request::parseHeaders() {
 
 
 	// El header Host hi ha de ser sempre. -> Func is there a header.
-	// El content length ens fa passar a la seguent fase. -> ParseBody
-	// Transfer-Encoding: chunked: Indica que el cuerpo no viene de golpe, sino dividido en bloques de tamaño dinámico. Si esta cabecera está presente, se ignora por completo Content-Length.
 	// Connection: Puede ser keep-alive (mantener el socket abierto para reutilizarlo en futuras peticiones) o close (cerrar el socket en cuanto envíes la respuesta).
 }
 
-static void addLeftover() {
-	// Restriccio missatge massa llarg.
-	if (_leftover) {
-		_stream = _leftover + _stream;
-		_leftover.clear();
-	}
+bool Request::hasHeader(std::string &str) {
+	bool hasHeader = _headers.count(str);
+	if (hasHeader)
+		return 1;
+	return 0;
 }
 
 bool Request::parseRequestHead() {
-	addLeftover();
+	// addLeftover();
 	if (!parseMethod())
 		return false;
 	while (true) {
@@ -181,119 +197,127 @@ bool Request::parseRequestHead() {
 		}
 		if (!parseHeaders())
 			return false;
+		if (!hasHeader("Host"))
+			// Error
 	}
 	return true;
 }
 
 // Body Functs
+bool isHexDigit(char c) {
+	return std::isdigit(static_cast<unsigned char>(c)) ||
+		   (c >= 'a' && c <= 'f') ||
+		   (c >= 'A' && c <= 'F');
+}
 
-static bool Request::parseFullBody() {
-	
+static size_t strToSize_t(std::string &str, const int base) {
+	if (base == 10) {
+		for (size_t i = 0; i < str.size(); ++i) {
+			if (!std::isdigit(static_cast<unsigned char>(str[i])))
+				// Error -> non digit present in expected decimal num.
+		}
+	} else if (base == 16) {
+		for (size_t i = 0; i < str.size(); ++i) {
+			if (!isHexDigit(str[i])) {
+				// Error -> non digit present in expected hex num.
+			}
+		}
+	} else 
+		//  unsuported base.
+	return static_cast<size_t>(std::strtoul(str.c_str(), NULL, base));
 }
 
 void Request::setBodyType() {
-	if (_bodyType == EMPTY) {
-		std::map<std::string, std::string>::iterator full = _headers.find("content-length");
-		std::map<std::string, std::string>::iterator chunked = _headers.find("transfer-encoding");
-		if (full != _headers.end()) {
-			if (chunked != _headers.end())
-				//  Error
-			_bodyType = FULL;
-		} else if (chunked != _headers.end()) {
-			if (_headers["transfer-encoding"] ==  "chunked")
-				_bodyType = CHUNKED;
-			else
-				// Error -> transfer encoding present pero diferent de chunked.
-		}
-	}
-}
-
-void Request::setBodySize(str::string &key) {
-	if (_maxBodySize != 0)
+	if (_bodyType != EMPTY)
 		return;
 
-	for (size_t i = 0; i < _headers[key].size(); ++i) {
-		if (!std::isdigit(static_cast<unsigned char>(s[i])))
-			// Error
-	}
-	
-	std::stringstream ss(s);
-	unsigned long long tmp = 0;
-	ss >> tmp;
-	if (ss.fail() || !ss.eof())
-		// 413/400 según política
+	bool hasContentLength = _headers.count("content-length") > 0;
+	bool hasTransferEncoding = _headers.count("transfer-encoding") > 0;
 
-	if (tmp > static_cast<unsigned long long>(std::numeric_limits<size_t>::max()))
-		// 413/400 según política
-
-	_maxBodySize = static_cast<size_t>(tmp);
+	if (hasContentLength && hasTransferEncoding)
+		// Error -> ambas cabeceras presentes.
+	else if (hasContentLength) {
+			_bodyType = FULL;
+			_maxBodySize = strToSize_t(_headers.find("content-length")->second.c_str(), 10);
+	} else if (hasTransferEncoding) 
+		_bodyType = CHUNKED;
 }
 
 bool Request::fullBody() {
-	setBodySize("content-length");
-	if (_streamBody.size() < _maxBodySize) {
-		_body.append(_streamBody);
-		_maxBodySize -= _streamBody.size();
+	size_t total = _body.size() + _streamBody.size();
+
+	if (total < _maxBodySize) {
+		_body += _streamBody;
 		_streamBody.clear();
 		return false;
-	} else if (_streamBody.size() == _maxBodySize) {
-		_body.append(_streamBody);
+	} else if (total == _maxBodySize) {
+		_body += _streamBody;
 		_maxBodySize = 0;
 		_streamBody.clear();
 		return true;
 	} else {
-		_body.append(_streamBody, 0, _maxBodySize);
-		_streamBody.erase(0, _maxBodySize);
-		_newRequest = _streamBody; // Isaaaaaaaaaaaaaaac
-		_streamBody.clear();
+		size_t remaining = _maxBodySize - _body.size();
+		_leftover = _streamBody.substr(remaining);
+		_body += _streamBody.substr(0, remaining);
+		_streamBody.clear();		
 		_maxBodySize = 0;
 		return true;
 	}
 }
 
 bool Request::chunkedBody() {
+	
+	const std::string delimiter = "\r\n";
+
 	while (true) {
 		if (!_leftoverBody.empty()) {
-			_leftoverBody.insert(_leftoverBody.end(), _streamBody.begin(), _streamBody.end());
-			_streamBody = _leftoverBody;
-			_leftoverBody.clear();
+		_streamBody = _leftoverBody + _streamBody;
+		_leftoverBody.clear();
 		}
-		std::string delimiter = "\r\n"
-		std::vector<char>::iterator it = std::search(_streamBody.begin(), _streamBody.end(), delimiter.begin(), delimiter.end());
-		if (it == _streamBody.end()) {
+
+		size_t pos = _streamBody.find(delimiter);
+		if (pos == std::string::npos) {
 			_leftoverBody = _streamBody;
 			_streamBody.clear();
 			return false;
 		}
-		else {
-			if (_streamBody[it.size() + 2]) {
-				_leftoverBody.insert(_leftoverBody.end(), _streamBody[it.size() + 2], _streamBody.end());
-				_leftoverBody.erase(_streamBody[it.size() + 2], _streamBody.end());
-			}
-			if (!_chunkSize) {
-				else if (it != _streamBody.end() && it.size() == 3 && it[0] == 0)
-					break;
-				for (std::vector<char>::iterator char_it = _streamBody.begin(); char_it != it; ++char_it) {
-					if (!std::isdigit(static_cast<unsigned char>(*char_it))) { 
-						// // Error, non digit chars in the nuber section of the chunk.
-					}
-					_maxBodySize = _maxBodySize * 10 + static_cast<size_t>(*char_it - '0');
+
+		if (!_chunkSize) {
+			std::string sizeStr = _streamBody.substr(0, pos);
+
+			if (sizeStr == "0") {
+				if (_streamBody.size() < pos + 4) {
+					_leftoverBody = _streamBody;
+					_streamBody.clear();
+					return false;
 				}
+				if (_streamBody.substr(pos, 4) != "\r\n\r\n")
+					// Error -> invalid final chunk.
+				_leftover = _streamBody.substr(pos + 4);
 				_streamBody.clear();
-				_chunkSize = true;
+				return true;
+			} 
+			_maxBodySize = strToSize_t(sizeStr, 16);
+			_streamBody.erase(0, pos + 2);
+			_chunkSize = true;
+		} else {
+			if (_streamBody.size() < _maxBodySize + 2) {
+				_leftoverBody = _streamBody;
+				_streamBody.clear();
+				return false;
 			}
-			else if (_chunkSize) {
-				if (_streamBody[it.size()] == '\r' && _streamBody[it.size() + 1] == '\n')
-					_streamBody.erase(_streamBody[it.size()], _streamBody[it.size() + 1]);
-				else
-					// Error
-				_body.insert(_streamBody.begin(), _streamBody.end());
-			}
+
+			_body += _streamBody.substr(0, _maxBodySize);
+
+			if (_streamBody.substr(_maxBodySize, 2) != "\r\n")
+				// Error -> invalid chunk ending.
+
+			_leftoverBody = _streamBody.substr(_maxBodySize + 2);
+			_streamBody.clear();
+			_chunkSize = false;
+			_maxBodySize = 0;
 		}
 	}
-	if (_streamBody[it.size()] == '\r' && _streamBody[it.size() + 1] == '\n')
-		// Error -> no \r\n after 0\r\n.
-	return true;
 }
 
 bool Request::parseRequestBody() {
@@ -301,8 +325,7 @@ bool Request::parseRequestBody() {
 	if (_bodyType == FULL) {
 		if(!fullBody())
 			return false;
-	}
-	else if (_bodyType == CHUNKED) {
+	} else if (_bodyType == CHUNKED) {
 		if (!chunkedBody())
 			return false;
 	}

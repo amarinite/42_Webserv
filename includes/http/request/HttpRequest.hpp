@@ -25,8 +25,8 @@ class Request {
 		std::vector<char>	_body;
 
 		// Comprovacions i validacions
-		std::string				_stream;
-		std::vector<char>		_streamBody;
+		std::string		_stream;
+		std::string		_streamBody;
 
 		// Head Parser
 		bool _methodParsed;
@@ -48,7 +48,7 @@ class Request {
 		// Body Parse
 		int				_bodyType;
 		size_t			_maxBodySize;
-		vector<char>	_leftoverBody;
+		std::string		_leftoverBody;
 		bool			_chunkSize;
 
 		//Functs
