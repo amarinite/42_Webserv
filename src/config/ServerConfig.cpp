@@ -114,7 +114,19 @@ const std::vector<LocationConfig>& ServerConfig::getLocations() const
 
 bool isValidMatch(const std::string& reqPath, const std::string& configPath)
 {
-	return reqPath.compare(0, configPath.size(), configPath) == 0;
+	if (reqPath.compare(0, configPath.size(), configPath) != 0)
+		return false;
+
+	if (reqPath.size() == configPath.size())
+		return true;
+
+	if (configPath[configPath.size() - 1] == '/')
+		return true;
+
+	if (reqPath[configPath.size()] == '/')
+		return true;
+
+	return false;
 }
 
 const LocationConfig& ServerConfig::getLocationConfig(const t_uri& uri) const
