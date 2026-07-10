@@ -11,7 +11,7 @@ static bool testValidSmallTree()
 		"	listen 80;\n"
 		"	location / {\n"
 		"		root /var/www/html;\n"
-		"		error_page 404 500 502 /error.html;\n"
+		"		cgi_extension .py /usr/bin/python3;\n"
 		"	}\n"
 		"}\n";
 	std::vector<Token> tokens = Lexer::tokenize(input);
@@ -55,16 +55,14 @@ static bool testValidSmallTree()
 	ASSERT(root->args.size() == 1);
 	ASSERT(root->args[0] == "/var/www/html");
 
-	// error_page directive (multiple args)
+	// cgi_extension directive (multiple args)
 	Node *errorPage = location->children[1];
 	ASSERT(errorPage->type == NODE_DIR);
-	ASSERT(errorPage->name == "error_page");
+	ASSERT(errorPage->name == "cgi_extension");
 	ASSERT(errorPage->context == LOCATION_CTXT);
-	ASSERT(errorPage->args.size() == 4);
-	ASSERT(errorPage->args[0] == "404");
-	ASSERT(errorPage->args[1] == "500");
-	ASSERT(errorPage->args[2] == "502");
-	ASSERT(errorPage->args[3] == "/error.html");
+	ASSERT(errorPage->args.size() == 2);
+	ASSERT(errorPage->args[0] == ".py");
+	ASSERT(errorPage->args[1] == "/usr/bin/python3");
 
 	delete tree;
 	return true;
