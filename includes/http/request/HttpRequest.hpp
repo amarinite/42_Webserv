@@ -32,7 +32,6 @@ class Request {
 
 		// Buffers
 		std::string	_stream;
-		std::string	_stream;
 		std::string _leftover;
 		std::string	_leftoverBody;
 

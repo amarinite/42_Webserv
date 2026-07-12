@@ -167,15 +167,11 @@ bool Request::parseHeaders() {
 			_stream.erase(0, 2);
 			return true;
 		}
-		std::cout << "Stream: " << _stream << std::endl;
 		findColon(_stream, del);
 		this->findKey();
 		this->findValue();
-		std::cout << _tmpKey << ": " << _tmpVal << std::endl;
 		this->addHeader();
-		
 	}
-	// El header Host hi ha de ser sempre. -> Func is there a header.
 	// Connection: Puede ser keep-alive (mantener el socket abierto para reutilizarlo en futuras peticiones) o close (cerrar el socket en cuanto envíes la respuesta).
 }
 
@@ -244,22 +240,22 @@ void Request::setBodyType() {
 }
 
 bool Request::fullBody() {
-	size_t total = _body.size() + _streamBody.size();
+	size_t total = _body.size() + _stream.size();
 
 	if (total < _maxBodySize) {
-		_body += _streamBody;
-		_streamBody.clear();
+		_body += _stream;
+		_stream.clear();
 		return false;
 	} else if (total == _maxBodySize) {
-		_body += _streamBody;
+		_body += _stream;
 		_maxBodySize = 0;
-		_streamBody.clear();
+		_stream.clear();
 		return true;
 	} else {
 		size_t remaining = _maxBodySize - _body.size();
-		_leftover = _streamBody.substr(remaining);
-		_body += _streamBody.substr(0, remaining);
-		_streamBody.clear();		
+		_leftover = _stream.substr(remaining);
+		_body += _stream.substr(0, remaining);
+		_stream.clear();		
 		_maxBodySize = 0;
 		return true;
 	}
@@ -271,47 +267,47 @@ bool Request::chunkedBody() {
 
 	while (true) {
 		if (!_leftoverBody.empty()) {
-		_streamBody = _leftoverBody + _streamBody;
+		_stream = _leftoverBody + _stream;
 		_leftoverBody.clear();
 		}
-		size_t pos = _streamBody.find(delimiter);
+		size_t pos = _stream.find(delimiter);
 		if (pos == std::string::npos) {
-			_leftoverBody = _streamBody;
-			_streamBody.clear();
+			_leftoverBody = _stream;
+			_stream.clear();
 			return false;
 		}
 
 		if (!_chunkSize) {
-			std::string sizeStr = _streamBody.substr(0, pos);
+			std::string sizeStr = _stream.substr(0, pos);
 
 			if (sizeStr == "0") {
-				if (_streamBody.size() < pos + 4) {
-					_leftoverBody = _streamBody;
-					_streamBody.clear();
+				if (_stream.size() < pos + 4) {
+					_leftoverBody = _stream;
+					_stream.clear();
 					return false;
 				}
-				if (_streamBody.substr(pos, 4) != "\r\n\r\n")
+				if (_stream.substr(pos, 4) != "\r\n\r\n")
 					throw HttpException(400, "Bad Request: Invalid Body.");
-				_leftover = _streamBody.substr(pos + 4);
-				_streamBody.clear();
+				_leftover = _stream.substr(pos + 4);
+				_stream.clear();
 				return true;
 			} 
 			_maxBodySize = strToSize_t(sizeStr, 16);
-			_streamBody.erase(0, pos + 2);
+			_stream.erase(0, pos + 2);
 			_chunkSize = true;
 		} else {
-			if (_streamBody.size() < _maxBodySize + 2) {
-				_leftoverBody = _streamBody;
-				_streamBody.clear();
+			if (_stream.size() < _maxBodySize + 2) {
+				_leftoverBody = _stream;
+				_stream.clear();
 				return false;
 			}
 
-			_body += _streamBody.substr(0, _maxBodySize);
+			_body += _stream.substr(0, _maxBodySize);
 
-			if (_streamBody.substr(_maxBodySize, 2) != "\r\n")
+			if (_stream.substr(_maxBodySize, 2) != "\r\n")
 				throw HttpException(400, "Bad Request: Invalid Body.");
-			_leftoverBody = _streamBody.substr(_maxBodySize + 2);
-			_streamBody.clear();
+			_leftoverBody = _stream.substr(_maxBodySize + 2);
+			_stream.clear();
 			_chunkSize = false;
 			_maxBodySize = 0;
 		}
@@ -342,8 +338,3 @@ std::map<std::string, std::string>  Request::getHeaders() {
 std::string	Request::getBody() {
 	return this->_body;
 }
-
-// pal tester:
-// - Headers en mayuscula
-// - Espacio no eliminados en headers value despues de los : y al final del value
-// - Espacio dentro del contenido del value de los headers.
