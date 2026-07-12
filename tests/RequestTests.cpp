@@ -9,6 +9,25 @@ static bool testSimpleGetRequest()
 	req.feedStream("GET /index.html HTTP/1.1\r\nHost: localhost\r\nUser-Agent: Mozilla\r\n\r\n");
 
 	ASSERT(req.parseRequestHead() == true);
+
+	// std::cout << "\n=========================================" << std::endl;
+	// std::cout << "🔍 [DEBUG] VALORES EXTRAÍDOS POR EL PARSER:" << std::endl;
+	// std::cout << "=========================================" << std::endl;
+	
+	// // Imprime el método obtenido
+	// std::cout << "• Método: [" << req.getMethod() << "]" << std::endl;
+	
+	// // Si tienes un getter para la URI o el protocolo, los puedes imprimir aquí
+	// // std::cout << "• HTTP Ver: [" << req.getHttpVer() << "]" << std::endl;
+
+	// std::cout << "• Cabeceras detectadas (Total: " << req.getHeaders().size() << "):" << std::endl;
+	
+	// // Guardamos el mapa en una variable local para iterar de forma segura en C++98
+	// std::map<std::string, std::string> headers = req.getHeaders();
+	// for (std::map<std::string, std::string>::const_iterator it = headers.begin(); it != headers.end(); ++it) {
+	// 	std::cout << "    -> " << it->first << ": [" << it->second << "]" << std::endl;
+	// }
+	// std::cout << "=========================================\n" << std::endl;
 	
 	ASSERT(req.getMethod() == "GET"); 
 	
@@ -17,7 +36,7 @@ static bool testSimpleGetRequest()
 	ASSERT(headers["host"] == "localhost");
 	ASSERT(headers.count("user-agent") == 1);
 	ASSERT(headers["user-agent"] == "Mozilla");
-	
+
 	return true;
 }
 
@@ -137,13 +156,13 @@ static bool testChunkedBodyParsing()
 void runHttpRequestTests(int& passed, int& failed)
 {
 	Test tests[] = {
-		{ "Simple valid GET request head",           testSimpleGetRequest },
-		{ "Missing Host header throws 400",          testMissingHostHeaderThrows },
-		{ "Header value trimming & internal spaces", testHeaderValueTrimmingWithInternalSpaces },
-		{ "Header keys are case insensitive",        testHeaderKeysAreCaseInsensitive },
-		{ "Duplicate critical headers throw 400",    testDuplicateCriticalHeadersThrows },
-		{ "Full body parsing via Content-Length",    testFullBodyParsing },
-		{ "Chunked body parsing",                    testChunkedBodyParsing }
+		{ "Test 1: Simple valid GET request head",           testSimpleGetRequest },
+		{ "Test 2: Missing Host header throws 400",          testMissingHostHeaderThrows },
+		{ "Test 3: Header value trimming & internal spaces", testHeaderValueTrimmingWithInternalSpaces },
+		{ "Test 4: Header keys are case insensitive",        testHeaderKeysAreCaseInsensitive },
+		{ "Test 5: Duplicate critical headers throw 400",    testDuplicateCriticalHeadersThrows },
+		{ "Test 6: Full body parsing via Content-Length",    testFullBodyParsing },
+		{ "Test 7: Chunked body parsing",                    testChunkedBodyParsing }
 	};
 
 	int localPassed = 0;
@@ -163,4 +182,5 @@ void runHttpRequestTests(int& passed, int& failed)
 
 	passed += localPassed;
 	failed += localFailed;
+	std::cout << "Passed" << std::endl;
 }

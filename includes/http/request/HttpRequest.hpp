@@ -52,10 +52,10 @@ class Request {
 		//Functs
 		// Head
 
-		bool hasHeader(std::string &str);
+		bool hasHeader(const std::string str);
 		bool parseHeaders();
 		void addHeader();
-		bool findValue(std::string &_tmpValue);
+		bool findValue();
 		bool findKey();
 		bool parseMethod();
 		bool safeEnd();

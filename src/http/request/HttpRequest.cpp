@@ -1,6 +1,15 @@
 #include "HttpRequest.hpp"
 
-Request::Request() : _headRead(false), _bodyRead(false), _leftover(NULL), _incompleteEndLine(false), _methodParsed(false), _uriParsed(false), _httpVerParsed(false), _parsedKey(false), _parsedValue(false), _chunkSize(false), _maxBodySize(0), _bodyType(EMPTY) {}
+Request::Request() : 
+	_methodParsed(false),
+	_uriParsed(false),
+	_httpVerParsed(false),
+	_parsedKey(false),
+	_parsedValue(false),
+	_incompleteEndLine(false),
+	_bodyType(EMPTY),
+	_maxBodySize(0),
+	_chunkSize(false) {}
 
 Request::Request(const Request &other) : _leftover(NULL) {
 	*this = other;
@@ -8,8 +17,6 @@ Request::Request(const Request &other) : _leftover(NULL) {
 
 Request &Request::operator=(const Request &other) {
 	if (this != &other) {
-		this->_rawRequest = other._rawRequest;
-		this->_methodHeader = other._methodHeader;
 		this->_headers = other._headers;
 		this->_body = other._body;
 		this->_stream = other._stream;
@@ -58,13 +65,13 @@ bool Request::parseMethod() {
 		safeGetLine(_stream, _method, ' ', this->_methodParsed);
 		if (!this->_methodParsed)
 			return false;
-		if (_method != "GET" && methodStr != "POST" && methodStr != "DELETE") // To be redone by server restrictions.
+		if (_method != "GET" && _method != "POST" && _method != "DELETE") // To be redone by server restrictions.
 			throw HttpException(400, "Bad Request: Invalid Method");
 	}
 
 	if (!this->_uriParsed) {
 		safeGetLine(_stream, _uriStr, ' ', this->_uriParsed);
-		if (!this._uriParsed)
+		if (!this->_uriParsed)
 			return false;
 		parseUri(this->_uri, _uriStr);
 		this->_uriStr.clear();
@@ -109,21 +116,21 @@ static void handleValueSpaces(std::string &value) {
 	value.erase(0, first);
 }
 
-bool Request::findValue(std::string &_tmpValue) {
+bool Request::findValue() {
 	if (!this->_parsedValue) {
-		safeGetLine(_stream, _tmpValue, '\r', this->_parsedValue);
+		safeGetLine(_stream, _tmpVal, '\r', this->_parsedValue);
 		if (!this->_parsedValue)
 			return false;
 		if (!safeEnd())
 			return false;
 	}
-	handleValueSpaces(_tmpValue);
+	handleValueSpaces(_tmpVal);
 	return true;
 }
 
 void Request::addHeader() {
 	if (this->_parsedKey && this->_parsedValue) {
-		if (this->_headers.count(_tmpKey) {
+		if (this->_headers.count(_tmpKey)) {
 			if (_tmpKey == "host" || _tmpKey == "content-length") {
 				_tmpKey.clear();
 				_tmpVal.clear();
@@ -135,51 +142,45 @@ void Request::addHeader() {
 	}
 	_tmpKey.clear();
 	_tmpVal.clear();
+	this->_parsedKey = false;
+	this->_parsedValue = false;
 }
 
 bool Request::parseHeaders() {
-	if (!this->findKey())
-		return false;
-
-	if (!this->findValue())
-		return false;
-
-	this->addHeader();
-
-	size_t pos = _stream.find("\r\n"); 
-	if (pos == std::string::npos || pos != 0) {
-		this->_parsedKey = false;
-		this->_parsedValue = false;
-		_leftover = _stream;
-		_stream.clear();
-		return false;
+	while (true) {
+		size_t del = _stream.find("\r\n");
+		if (del == std::string::npos) {
+			_leftover = _stream;
+			_stream.clear();
+			return false;
+		}
+		if (del == 0) {
+			_stream.erase(0, 2);
+			return true;
+		}
+		this->findKey();
+		this->findValue();
+		this->addHeader();
 	}
-	_stream.erase(0, 2);
-	return true;
-
-
 	// El header Host hi ha de ser sempre. -> Func is there a header.
 	// Connection: Puede ser keep-alive (mantener el socket abierto para reutilizarlo en futuras peticiones) o close (cerrar el socket en cuanto envíes la respuesta).
 }
 
-bool Request::hasHeader(std::string &str) {
-	bool hasHeader = _headers.count(str);
-	if (hasHeader)
-		return 1;
-	return 0;
+bool Request::hasHeader(const std::string str) {
+	return _headers.count(str) > 0;
 }
 
 bool Request::parseRequestHead() {
 	if (!parseMethod())
 		return false;
-	while (true) {
-		if (_stream.size() >= 2 && _stream[0] == '\r' && _stream[1] == '\n') {
-			_stream.erase(0, 2);
-			return true;
-		}
-		if (!parseHeaders())
-			return false;
-	}
+	// while (true) {
+	// 	if (_stream.size() >= 2 && _stream[0] == '\r' && _stream[1] == '\n') {
+	// 		_stream.erase(0, 2);
+	// 		return true;
+	// 	}
+	if (!parseHeaders())
+		return false;
+	// }
 	if (!hasHeader("host"))
 			throw HttpException(400, "Bad Request: Header Host not present.");
 	return true;
@@ -192,12 +193,11 @@ bool isHexDigit(char c) {
 		   (c >= 'A' && c <= 'F');
 }
 
-static size_t strToSize_t(std::string &str, const int base) {
+static size_t strToSize_t(const std::string &str, const int base) {
 	if (base == 10) {
 		for (size_t i = 0; i < str.size(); ++i) {
 			if (!std::isdigit(static_cast<unsigned char>(str[i])))
 				throw HttpException(400, "Bad Request: Invalid Body Size.");
-				// Error -> non digit present in expected decimal num.
 		}
 	} else if (base == 16) {
 		for (size_t i = 0; i < str.size(); ++i) {
@@ -206,8 +206,8 @@ static size_t strToSize_t(std::string &str, const int base) {
 			}
 		}
 	} else 
-		//  unsuported base.
-	return static_cast<size_t>(std::strtoul(str.c_str(), NULL, base));
+		throw HttpException(400, "Bad Request: Unsuported Base.");
+	return (static_cast<size_t>(std::strtoul(str.c_str(), NULL, base)));
 }
 
 void Request::setBodyType() {
@@ -314,12 +314,8 @@ bool Request::parseRequestBody() {
 	return true;
 }
 
-
-
-
-
 //Getters
-t_method	Request::getMethod() {
+std::string	Request::getMethod() {
 	return this->_method;
 }
 
@@ -327,14 +323,11 @@ std::map<std::string, std::string>  Request::getHeaders() {
 	return this->_headers;
 }
 
-std::vector<char>	Request::getBody() {
-	return this->body;
+std::string	Request::getBody() {
+	return this->_body;
 }
 
 // pal tester:
 // - Headers en mayuscula
 // - Espacio no eliminados en headers value despues de los : y al final del value
 // - Espacio dentro del contenido del value de los headers.
-
-////////////////
-// Corregeix Request -> Revisa si cal refactorizar Body, en principi no
