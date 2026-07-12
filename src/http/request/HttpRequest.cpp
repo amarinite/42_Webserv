@@ -100,6 +100,8 @@ bool Request::findKey() {
 			return false;
 		else if (_tmpKey.find(' ') != std::string::npos)
 				throw HttpException(400, "Bad Request: Space found in Header");
+		else if (_tmpKey.size() == 0)
+				throw HttpException(400, "Bad Request: Empty host key");
 		tolowerStr(_tmpKey);
 	}
 	return true;
@@ -146,6 +148,13 @@ void Request::addHeader() {
 	this->_parsedValue = false;
 }
 
+static void findColon(const std::string &stream, size_t headerEnd) {
+	std::string header = stream.substr(0, headerEnd);
+	size_t colon = header.find(":");
+	if (colon == std::string::npos)
+		throw HttpException(400, "Bad Request: No colon found in header.");
+}
+
 bool Request::parseHeaders() {
 	while (true) {
 		size_t del = _stream.find("\r\n");
@@ -158,31 +167,35 @@ bool Request::parseHeaders() {
 			_stream.erase(0, 2);
 			return true;
 		}
+		std::cout << "Stream: " << _stream << std::endl;
+		findColon(_stream, del);
 		this->findKey();
 		this->findValue();
+		std::cout << _tmpKey << ": " << _tmpVal << std::endl;
 		this->addHeader();
+		
 	}
 	// El header Host hi ha de ser sempre. -> Func is there a header.
 	// Connection: Puede ser keep-alive (mantener el socket abierto para reutilizarlo en futuras peticiones) o close (cerrar el socket en cuanto envíes la respuesta).
 }
 
-bool Request::hasHeader(const std::string str) {
-	return _headers.count(str) > 0;
+void Request::checkInvalidHeaders() {
+	if (_headers.count("host") <= 0)
+		throw HttpException(400, "Bad Request: Header Host not present.");
+	if (_headers.count("content-length")) {
+		if (_headers["content-length"].find("-") != std::string::npos)
+			throw HttpException(400, "Bad Request: Negative body length.");
+	}
+
 }
 
 bool Request::parseRequestHead() {
 	if (!parseMethod())
 		return false;
-	// while (true) {
-	// 	if (_stream.size() >= 2 && _stream[0] == '\r' && _stream[1] == '\n') {
-	// 		_stream.erase(0, 2);
-	// 		return true;
-	// 	}
 	if (!parseHeaders())
 		return false;
-	// }
-	if (!hasHeader("host"))
-			throw HttpException(400, "Bad Request: Header Host not present.");
+	checkInvalidHeaders();
+			
 	return true;
 }
 
@@ -219,9 +232,13 @@ void Request::setBodyType() {
 
 	if (hasContentLength && hasTransferEncoding)
 		throw HttpException(400, "Bad Request: Repeated Headers.");
+	else if (!hasContentLength && !hasTransferEncoding) {
+		if (_stream.size() > 0)
+			_leftover = _stream;
+	}
 	else if (hasContentLength) {
-			_bodyType = FULL;
-			_maxBodySize = strToSize_t(_headers.find("content-length")->second.c_str(), 10);
+		_bodyType = FULL;
+		_maxBodySize = strToSize_t(_headers.find("content-length")->second.c_str(), 10);
 	} else if (hasTransferEncoding) 
 		_bodyType = CHUNKED;
 }
@@ -257,7 +274,6 @@ bool Request::chunkedBody() {
 		_streamBody = _leftoverBody + _streamBody;
 		_leftoverBody.clear();
 		}
-
 		size_t pos = _streamBody.find(delimiter);
 		if (pos == std::string::npos) {
 			_leftoverBody = _streamBody;

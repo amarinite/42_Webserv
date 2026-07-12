@@ -32,7 +32,7 @@ class Request {
 
 		// Buffers
 		std::string	_stream;
-		std::string	_streamBody;
+		std::string	_stream;
 		std::string _leftover;
 		std::string	_leftoverBody;
 
@@ -52,7 +52,7 @@ class Request {
 		//Functs
 		// Head
 
-		bool hasHeader(const std::string str);
+		void checkInvalidHeaders();
 		bool parseHeaders();
 		void addHeader();
 		bool findValue();
@@ -86,6 +86,6 @@ class Request {
         }
 
         void feedBody(const std::string &data) {
-            this->_streamBody += data;
+            this->_stream += data;
         }
 };
