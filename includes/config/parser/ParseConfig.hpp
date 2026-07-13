@@ -3,7 +3,7 @@
 #include <utility>
 #include <vector>
 #include <iostream>
-#include "Token.hpp"
+#include "Lexer.hpp"
 #include "ConfigException.hpp"
 
 enum NodeType { NODE_DIR, NODE_BLOCK };
@@ -27,6 +27,18 @@ struct Node
 			delete children[i];
 	}
 };
+
+inline std::vector<Node*> getChildrenByType(const Node* parent, NodeType type, const std::string& name = "")
+{
+	std::vector<Node*> result;
+	for (std::size_t i = 0; i < parent->children.size(); ++i)
+	{
+		Node* child = parent->children[i];
+		if (child->type == type && (name.empty() || child->name == name))
+			result.push_back(child);
+	}
+	return result;
+}
 
 class ParseConfig
 {
