@@ -206,18 +206,18 @@ static int isDirectPath(t_uri &uri, std::string req) {
         return 0;
     }
 	
-	if (req[0] == '/' && req.size() == 1) {
-		uri.scheme = '/';
-		return 0;
-	}
-	return 1;
-	//FIX
-	// (void)uri;
-	// if (!req.empty() && req[0] == '/') {
-	// 	return 1; 
+	// if (req[0] == '/' && req.size() == 1) {
+	// 	uri.scheme = '/';
+	// 	return 0;
 	// }
+	// return 1;
+	//FIX
+	(void)uri;
+	if (!req.empty() && req[0] == '/') {
+		return 1; 
+	}
 
-	// return 0;
+	return 0;
 }
 
 static int detectDelimiters(t_uri &uri, std::string req) {
