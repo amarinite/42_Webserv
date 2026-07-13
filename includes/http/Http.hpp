@@ -2,7 +2,7 @@
 
 #include <cerrno>
 
-enum class State {
+enum State {
 	READING_HEADERS;
 	READING_BODY;
 	PROCESSING;
@@ -13,13 +13,17 @@ enum class State {
 class Http {
 	private:
 		// Config goes here.
-		State		_status;
+		std::string	_rawBuff;
+		size_t		_rawBuffSize;
+		
+		int			_status;
 		Request		&_req;
 		Response	&_res;
 		
 
 		//Functs
 		void HttpRoutine();
+		void addLeftover();
 
 	public:
 		Http();
@@ -30,4 +34,23 @@ class Http {
 
 		//Getters
 		HandleSocket	getSocket;
-}
+};
+
+class HttpException : public std::exception {
+private:
+    int _statusCode;
+    std::string _message;
+
+public:
+    HttpException(int code, const std::string& msg) : _statusCode(code), _message(msg) {}
+    virtual ~HttpException() throw() {}
+
+    virtual const char* what() const throw() {
+        return _message.c_str();
+    }
+
+    int getStatusCode() const {
+        return _statusCode;
+    }
+};
+

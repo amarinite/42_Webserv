@@ -23,22 +23,74 @@ Http &Http::operator=(const Http &other) {
 Http::~Http() {}
 
 //Functs
-void Http::HttpRoutine(char *buff) {
+void Http::addLeftover(std::string &rawBuffer, size_t &rawBufferSize) {
+	if (_request._leftover == NULL && rawBuff != NULL)
+		return;
+	if (_request._leftover != NULL && rawBuff == NULL) {
+		buff = _request._leftover;
+		return;
+	}
+	if (_request._leftover == NULL && rawBuff == NULL)
+		// Hauria de ser un exit de la func de parseig de request. De fet no hi ha ni info rebuda ni heredada.
+	else {
+		rawBuff = _leftover + rawBuff;
+		rawBuffSize += _leftover.size();
+		_leftover.clear();		
+	}
+}
 
-	switch(this->_status) {
+void Http::handleBuffer(char *buff, size_t bytesRead) {
+	if (!buff || bytesRead == 0)
+		// Error no buff.
+	std::string rawBuff(buff, bytesRead);
+	size_t rawBuffSize = bytesRead;
+	addLeftover(rawBuff);
+	
+	std::string head(rawBuff, rawBuffSize);
+	size_t bodyStart = 0;
+
+	if (_status == READING_HEADERS) {
+		size_t end = head.find("\r\n\r\n");
+		if (end == std::string::npos) {
+			_request._stream = head;
+			return;
+		}
+		_request._stream = head.substr(0, end + 4);
+		bodyStart = end + 4;
+	}
+	size_t bodyLen = head.size() - bodyStart;
+	_request._streamBody = head.substr(bodyStart, head.end());
+}
+
+void Http::methodGetCase() {
+	if (_request._method == "GET") {
+		if (_headers.count("content-length") > 0 || _headers.count("transfer-encoding") > 0)
+			throw HttpException(400, "Bad Request: Body Present in Get Method.");
+		else {
+			_status = PROCESSING;
+			return 1;
+		}
+		return 0;
+	}
+}
+
+void Http::HttpRoutine(char *buff, size_t bytesRead) {
+	switch(_status) {
 		case READING_HEADERS: {
-			if (this->_request.parseRequestHead(&buff)) {
-				this->_status = READING_BODY;
-				if (buff && *buff != '\0') {
-					if (this->_request.parseRequestBody(&buff))
-						this->_status = PROCESSING;
-				}
+			handleBuffer(buff, bytesRead);
+			if (_request.parseRequestHead()) {
+				_status = READING_BODY;
+				if (methodGetCase())
+					continue;
+				if (_request.parseRequestBody())
+					_status = PROCESSING;
 			}
 			break;
 		}
 		case READING_BODY: {
-			if (this->_request.parseRequestBody(&buff))
-				this->_status = PROCESSING;
+			handleBuffer(buff, bytesRead);
+			if (_request.parseRequestBody())
+				_status = PROCESSING;
 			break;
 		}
 		case PROCESSING: {
@@ -57,7 +109,7 @@ void Http::HttpRoutine(char *buff) {
 
 //Getters
 HandleSocket	Http::getSocket {
-    return this->_socket;
+	return this->_socket;
 }
 
 ////////////////////////
