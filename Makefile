@@ -17,7 +17,7 @@ CXX = c++
 INC_DIR := $(shell find ./includes -type d)
 
 ALL_INC = $(addprefix -I, $(INC_DIR))
-CXXFLAGS = -Wall -Wextra -Werror -std=c++98 $(ALL_INC)
+CXXFLAGS = -Wall -Wextra -Werror -g -std=c++98 $(ALL_INC)
 
 TEST_DIR        = tests
 TEST_OBJ_DIR    = obj/tests
