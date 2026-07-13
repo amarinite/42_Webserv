@@ -168,8 +168,10 @@ bool Request::parseHeaders() {
 			return true;
 		}
 		findColon(_stream, del);
-		this->findKey();
-		this->findValue();
+		if (!this->findKey())
+			return false;
+		if (!this->findValue())
+			return false;
 		this->addHeader();
 	}
 	// Connection: Puede ser keep-alive (mantener el socket abierto para reutilizarlo en futuras peticiones) o close (cerrar el socket en cuanto envíes la respuesta).
@@ -182,7 +184,6 @@ void Request::checkInvalidHeaders() {
 		if (_headers["content-length"].find("-") != std::string::npos)
 			throw HttpException(400, "Bad Request: Negative body length.");
 	}
-
 }
 
 bool Request::parseRequestHead() {
@@ -190,8 +191,7 @@ bool Request::parseRequestHead() {
 		return false;
 	if (!parseHeaders())
 		return false;
-	checkInvalidHeaders();
-			
+	checkInvalidHeaders();		
 	return true;
 }
 

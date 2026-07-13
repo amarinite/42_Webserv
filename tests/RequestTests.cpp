@@ -283,7 +283,7 @@ static bool testBothContentLengthAndChunkedPolicy()
 void runHttpRequestTests(int& passed, int& failed)
 {
 	Test tests[] = {
-	{ "Test 1: Simple GET request head",                    testSimpleGetRequest },
+	{ "Test 1: Simple GET request head",                   testSimpleGetRequest },
 	{ "Test 2: Missing Host throws 400",                   testMissingHostHeaderThrows },
 	{ "Test 3: Header value trimming",                     testHeaderValueTrimming },
 	{ "Test 4: Header keys case-insensitive",              testHeaderKeysAreCaseInsensitive },

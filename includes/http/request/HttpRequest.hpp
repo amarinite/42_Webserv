@@ -9,8 +9,8 @@
 
 enum BodyType {
 	EMPTY,
-    FULL,
-    CHUNKED,
+	FULL,
+	CHUNKED,
 	OTHER
 };
 
@@ -81,10 +81,10 @@ class Request {
 
 		// Testing only
 		void feedStream(const std::string &data) {
-            this->_stream += data;
-        }
+			this->_stream += data;
+		}
 
-        void feedBody(const std::string &data) {
-            this->_stream += data;
-        }
+		void feedBody(const std::string &data) {
+			this->_stream += data;
+		}
 };
