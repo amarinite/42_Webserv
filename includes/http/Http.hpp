@@ -1,13 +1,16 @@
 #pragma once
 
 #include <cerrno>
+#include <string>
+#include "HttpRequest.hpp"
+#include "HttpException.hpp"
 
 enum State {
-	READING_HEADERS;
-	READING_BODY;
-	PROCESSING;
-	WRITING_RESPONSE;
-	FINISHED;
+	READING_HEADERS,
+	READING_BODY,
+	PROCESSING,
+	WRITING_RESPONSE,
+	FINISHED
 };
 
 class Http {
@@ -16,41 +19,28 @@ class Http {
 		std::string	_rawBuff;
 		size_t		_rawBuffSize;
 		
-		int			_status;
-		Request		&_req;
-		Response	&_res;
+		State		_status;
+		Request		_request;
+		// Response	_response;
 		
-
 		//Functs
-		void HttpRoutine();
-		void addLeftover();
+		void addLeftover(std::string &rawBuff, size_t &rawBuffSize);
+		void handleBuffer(char *buff, size_t bytesRead);
+		bool methodGetCase();
 
 	public:
 		Http();
-		Http(const HandleSocket &socket);
+		// Http(const HandleSocket &socket);
 		Http(const Http &other);
 		Http &operator=(const Http &other);
 		~Http();
 
+		//Functs
+		void HttpRoutine(char *buff, size_t bytesRead);
+		
 		//Getters
-		HandleSocket	getSocket;
-};
-
-class HttpException : public std::exception {
-private:
-    int _statusCode;
-    std::string _message;
-
-public:
-    HttpException(int code, const std::string& msg) : _statusCode(code), _message(msg) {}
-    virtual ~HttpException() throw() {}
-
-    virtual const char* what() const throw() {
-        return _message.c_str();
-    }
-
-    int getStatusCode() const {
-        return _statusCode;
-    }
+		State getStatus() const;
+		const Request &getRequest() const;
+		Request &getRequest();
 };
 

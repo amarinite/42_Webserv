@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include "HttpException.hpp"
 
 struct t_uri {
 	bool		has_scheme;
@@ -39,23 +40,3 @@ struct t_uri {
 };
 
 void	parseUri(t_uri &uri, std::string req);
-
-#include <exception>
-
-class HttpException : public std::exception {
-	private:
-		int _statusCode;
-		std::string _message;
-
-	public:
-		HttpException(int code, const std::string& msg) : _statusCode(code), _message(msg) {}
-		virtual ~HttpException() throw() {}
-
-		virtual const char* what() const throw() {
-			return _message.c_str();
-		}
-
-		int getStatusCode() const {
-			return _statusCode;
-		}
-};

@@ -264,7 +264,6 @@ bool Request::fullBody() {
 bool Request::chunkedBody() {
 	
 	const std::string delimiter = "\r\n";
-
 	while (true) {
 		if (!_leftoverBody.empty()) {
 		_stream = _leftoverBody + _stream;

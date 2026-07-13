@@ -1,10 +1,12 @@
 #include "Http.hpp"
 
-Http::Http() {
-	std::cout << "Http class: I shouldn't exist, yet here I am." << std::endl;
-}
+Http::Http() : _rawBuff(""),
+	_rawBuffSize(0),
+	_status(READING_HEADERS),
+	_request()
+{}
 
-Http::Http(const HandleSocket &socket) : _status(READING_HEADERS), _socket(socket) {}
+// Http::Http(const HandleSocket &socket) : _status(READING_HEADERS), _socket(socket) {}
 
 Http::Http(const Http &other) {
 	*this = other;
@@ -12,10 +14,11 @@ Http::Http(const Http &other) {
 
 Http &Http::operator=(const Http &other) {
 	if (this != &other) {
-		_socket = other._socket;
-		_state = other._state;
+		_rawBuff = other._rawBuff;
+		_rawBuffSize = other._rawBuffSize;
+		_status = other._status;
 		_request = other._request;
-		_response = other_response;
+		// _response = other._response;
 	}
 	return *this;
 }
@@ -23,55 +26,56 @@ Http &Http::operator=(const Http &other) {
 Http::~Http() {}
 
 //Functs
-void Http::addLeftover(std::string &rawBuffer, size_t &rawBufferSize) {
-	if (_request._leftover == NULL && rawBuff != NULL)
+void Http::addLeftover(std::string &rawBuff, size_t &rawBufferSize) {
+	const bool hasLeftover = !_request._leftover.empty();
+	const bool hasRawBuff  = !rawBuff.empty();
+
+	if (!hasLeftover && hasRawBuff)
 		return;
-	if (_request._leftover != NULL && rawBuff == NULL) {
-		buff = _request._leftover;
+	if (hasLeftover && !hasRawBuff) {
+		rawBuff = _request._leftover;
+		rawBufferSize = rawBuff.size();
+		_request._leftover.clear();
 		return;
 	}
-	if (_request._leftover == NULL && rawBuff == NULL)
-		// Hauria de ser un exit de la func de parseig de request. De fet no hi ha ni info rebuda ni heredada.
-	else {
-		rawBuff = _leftover + rawBuff;
-		rawBuffSize += _leftover.size();
-		_leftover.clear();		
-	}
+	if (!hasLeftover && !hasRawBuff)
+		throw HttpException(400, "Bad Request: Empty Buffer.");
+	rawBuff = _request._leftover + rawBuff;
+	rawBufferSize += _request._leftover.size();
+	_request._leftover.clear();
 }
 
 void Http::handleBuffer(char *buff, size_t bytesRead) {
-	if (!buff || bytesRead == 0)
-		// Error no buff.
-	std::string rawBuff(buff, bytesRead);
-	size_t rawBuffSize = bytesRead;
-	addLeftover(rawBuff);
-	
-	std::string head(rawBuff, rawBuffSize);
-	size_t bodyStart = 0;
+	std::string rawBuff;
+	if (buff != NULL && bytesRead > 0)
+		rawBuff.assign(buff, bytesRead);
 
-	if (_status == READING_HEADERS) {
-		size_t end = head.find("\r\n\r\n");
-		if (end == std::string::npos) {
-			_request._stream = head;
-			return;
-		}
-		_request._stream = head.substr(0, end + 4);
-		bodyStart = end + 4;
-	}
-	size_t bodyLen = head.size() - bodyStart;
-	_request._streamBody = head.substr(bodyStart, head.end());
+	size_t rawBuffSize = bytesRead;
+	addLeftover(rawBuff, rawBuffSize);
+
+	_request._stream = rawBuff;
+	// std::string head = rawBuff;
+	// size_t bodyStart = 0;
+
+	// if (_status == READING_HEADERS) {
+	// 	size_t end = head.find("\r\n\r\n");
+	// 	if (end == std::string::npos) {
+	// 		_request._stream = head;
+	// 		return;
+	// 	}
+	// 	bodyStart = end + 4;
+	// }
+	// _request._stream = head.substr(0, bodyStart);
 }
 
-void Http::methodGetCase() {
-	if (_request._method == "GET") {
-		if (_headers.count("content-length") > 0 || _headers.count("transfer-encoding") > 0)
-			throw HttpException(400, "Bad Request: Body Present in Get Method.");
-		else {
-			_status = PROCESSING;
-			return 1;
-		}
-		return 0;
-	}
+bool Http::methodGetCase() {
+	if (_request._method != "GET") 
+		return true;
+	if (_request._headers.count("content-length") > 0
+		|| _request._headers.count("transfer-encoding") > 0)
+		throw HttpException(400, "Bad Request: Body Present in GET Method.");
+	_status = PROCESSING;
+	return true;
 }
 
 void Http::HttpRoutine(char *buff, size_t bytesRead) {
@@ -80,9 +84,7 @@ void Http::HttpRoutine(char *buff, size_t bytesRead) {
 			handleBuffer(buff, bytesRead);
 			if (_request.parseRequestHead()) {
 				_status = READING_BODY;
-				if (methodGetCase())
-					continue;
-				if (_request.parseRequestBody())
+				if (methodGetCase() && _request.parseRequestBody())
 					_status = PROCESSING;
 			}
 			break;
@@ -107,11 +109,18 @@ void Http::HttpRoutine(char *buff, size_t bytesRead) {
 	}	
 }
 
-//Getters
-HandleSocket	Http::getSocket {
-	return this->_socket;
+// Getters
+State Http::getStatus() const {
+	return _status;
 }
 
+const Request &Http::getRequest() const {
+	return _request;
+}
+
+Request &Http::getRequest() {
+	return _request;
+}
 ////////////////////////
 // Revisa si inicialitzes correctament la request i la response. 
 // - Maybe el constructor per defecte de request hauria de fer inicialitzacio basica. 
