@@ -38,7 +38,7 @@ static void tolowerStr(std::string &str) {
 static void safeGetLine(std::string &stream, std::string &var, char delimiter, bool &done) {
 	size_t pos = stream.find(delimiter);
 	if (pos != std::string::npos) {
-		var = stream.substr(0, pos);
+		var += stream.substr(0, pos);
 		stream.erase(0, pos + 1);
 		done = true;
 		return;
@@ -155,8 +155,17 @@ static void findColon(const std::string &stream, size_t headerEnd) {
 		throw HttpException(400, "Bad Request: No colon found in header.");
 }
 
+static void isBadlyClosed(const std::string &stream) {
+	size_t posN = stream.find("\n");
+	size_t posR = stream.find("\r");
+
+	if (posN < posR)
+		throw HttpException(400, "Bad Request: Bad Delimiter '\n'.");
+}
+
 bool Request::parseHeaders() {
 	while (true) {
+		isBadlyClosed(_stream);
 		size_t del = _stream.find("\r\n");
 		if (del == std::string::npos) {
 			_leftover = _stream;

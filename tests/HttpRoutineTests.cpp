@@ -243,6 +243,141 @@ static bool testBothContentLengthAndChunkedPolicy()
 	return true;
 }
 
+static bool testGetMethodWithBodyThrows()
+{
+	Http h;
+	try {
+		feed(h, "GET /index.html HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\n\r\n12345");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testSpaceInHeaderKeyThrows()
+{
+	Http h;
+	try {
+		feed(h, "GET / HTTP/1.1\r\nHost : localhost\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testFragmentedHeaderParsing()
+{
+	Http h;
+	feed(h, "GET /index.h");
+	ASSERT(h.getStatus() == READING_HEADERS);
+	
+	feed(h, "tml HTTP/1.1\r\nHo");
+	ASSERT(h.getStatus() == READING_HEADERS);
+
+	feed(h, "st: localhost\r\n\r\n");
+	ASSERT(h.getStatus() == PROCESSING);
+	ASSERT(h.getRequest().getMethod() == "GET");
+	
+	std::map<std::string, std::string> headers = h.getRequest().getHeaders();
+	ASSERT(headers["host"] == "localhost");
+	return true;
+}
+
+
+// We wait for the Routine and socket to be done to test that.
+// static bool testFragmentedBodyParsing()
+// {
+// 	Http h;
+// 	feed(h, "POST /submit HTTP/1.1\r\nHost: localhost\r\nContent-Length: 10\r\n\r\n");
+// 	ASSERT(h.getStatus() == READING_BODY);
+
+// 	feed(h, "Hello");
+// 	ASSERT(h.getStatus() == READING_BODY);
+
+// 	feed(h, " World");
+// 	ASSERT(h.getStatus() == PROCESSING);
+// 	ASSERT(h.getRequest().getBody() == "Hello World");
+// 	return true;
+// }
+
+static bool testChunkedFragmentedPayload()
+{
+	Http h;
+	feed(h, "POST /stream HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n");
+	ASSERT(h.getStatus() == READING_BODY);
+
+	feed(h, "5\r\n");
+	ASSERT(h.getStatus() == READING_BODY);
+
+	feed(h, "Hello\r\n");
+	ASSERT(h.getStatus() == READING_BODY);
+
+	feed(h, "0\r\n\r\n");
+	ASSERT(h.getStatus() == PROCESSING);
+	ASSERT(h.getRequest().getBody() == "Hello");
+	return true;
+}
+
+static bool testInvalidDelimiterInRequestLineThrows()
+{
+	Http h;
+	try {
+		feed(h, "GET /index.html HTTP/1.1\nHost: localhost\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testInvalidLineEndingInHeaderThrows()
+{
+	Http h;
+	try {
+		feed(h, "GET /index.html HTTP/1.1\r\nHost: localhost\nConnection: close\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testInvalidContentLengthNonNumericThrows()
+{
+	Http h;
+	try {
+		feed(h, "POST /api HTTP/1.1\r\nHost: localhost\r\nContent-Length: 12a3\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testMultiLineHeaderValueFoldingSupported()
+{
+	Http h;
+	feed(h, "GET / HTTP/1.1\r\nHost: localhost\r\nX-Custom: val1\r\nX-Custom: val2\r\n\r\n");
+	ASSERT(h.getStatus() == PROCESSING);
+	std::map<std::string, std::string> headers = h.getRequest().getHeaders();
+	ASSERT(headers["x-custom"] == "val1, val2");
+	return true;
+}
+
+static bool testChunkedInvalidTerminatorThrows()
+{
+	Http h;
+	try {
+		feed(h, "POST /stream HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHelloX\r\n0\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
 void runHttpRequestTests(int& passed, int& failed)
 {
 	Test tests[] = {
@@ -265,7 +400,17 @@ void runHttpRequestTests(int& passed, int& failed)
 		{ "Test 19: Chunked multiple chunks accepted",         testChunkedMultipleChunksAccepted },
 		{ "Test 20: Chunked invalid size throws",              testChunkedInvalidHexSizeThrows },
 		{ "Test 21: Chunked missing terminator",               testChunkedMissingTerminatorNotDoneOrThrows400 },
-		{ "Test 23: Both CL and chunked policy",               testBothContentLengthAndChunkedPolicy }
+		{ "Test 23: Both CL and chunked policy",               testBothContentLengthAndChunkedPolicy },
+		{ "Test 24: GET method with body throws 400",          testGetMethodWithBodyThrows },
+		{ "Test 25: Space in header key throws 400",           testSpaceInHeaderKeyThrows },
+		{ "Test 26: Fragmented header parsing",                testFragmentedHeaderParsing },
+		// { "Test 27: Fragmented body parsing",                  testFragmentedBodyParsing },
+		{ "Test 28: Chunked fragmented payload",               testChunkedFragmentedPayload },
+		{ "Test 29: Invalid delimiter in request line (\\n)",  testInvalidDelimiterInRequestLineThrows },
+		{ "Test 30: Invalid line ending in headers",           testInvalidLineEndingInHeaderThrows },
+		{ "Test 31: Content-Length with non-numeric chars",    testInvalidContentLengthNonNumericThrows },
+		{ "Test 32: Multi-line header folding concatenation",  testMultiLineHeaderValueFoldingSupported },
+		{ "Test 33: Chunked body invalid size block terminator",testChunkedInvalidTerminatorThrows }
 	};
 
 	int localPassed = 0;
