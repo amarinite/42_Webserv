@@ -81,27 +81,19 @@ void LocationConfig::setAutoindex(const Node* n)
 
 void LocationConfig::setUploadStore(const Node* n)
 {
-	t_uri uri;
-	parseUri(uri, n->args[0]);
-
-	_upload_store = uri;
+	_upload_store = n->args[0];
 }
 
 void LocationConfig::setCgiExtension(const Node* n)
 {
 	std::string ext = n->args[0];
-	t_uri uri;
-	parseUri(uri, n->args[1]);
 
-	_cgi_extension[ext] = uri;
+	_cgi_extension[ext] = n->args[1];
 }
 
 void LocationConfig::setRoot(const Node* n)
 {
-	t_uri uri;
-	parseUri(uri, n->args[0]);
-
-	_root = uri;
+	_root = n->args[0];
 }
 
 void LocationConfig::setIndex(const Node* n)
@@ -116,7 +108,7 @@ bool LocationConfig::hasAutoindex() const
 
 bool LocationConfig::hasUploadEnabled() const
 {
-	return _upload_store.has_path;
+	return !_upload_store.empty();
 }
 
 bool LocationConfig::hasCgi() const
@@ -139,17 +131,17 @@ const t_uri& LocationConfig::getRedirect() const
 	return _redirect;
 }
 
-const t_uri& LocationConfig::getUploadStore() const
+const std::string& LocationConfig::getUploadStore() const
 {
 	return _upload_store;
 }
 
-const std::map<std::string, t_uri>& LocationConfig::getCgiExtension() const
+const std::map<std::string, std::string>& LocationConfig::getCgiExtension() const
 {
 	return _cgi_extension;
 }
 
-const t_uri& LocationConfig::getRoot() const
+const std::string& LocationConfig::getRoot() const
 {
 	return _root;
 }
