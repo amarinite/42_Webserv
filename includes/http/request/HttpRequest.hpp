@@ -5,34 +5,27 @@
 #include <vector>
 #include <cctype>
 #include <cstdlib>
+#include "HttpException.hpp"
 #include "UriParser.hpp"
 
 enum BodyType {
 	EMPTY,
-    FULL,
-    CHUNKED,
+	FULL,
+	CHUNKED,
 	OTHER
 };
 
 class Request {
 	private:
 		// Method
-		std::string _method;
-		t_uri		_uri;
 		std::string _uriStr;
 		std::string	_httpVer;
 		
 		//Headers
-		std::map<std::string, std::string>  _headers;
 		std::string _tmpKey;
 		std::string _tmpVal;
 
-		//Body
-		std::string	_body;
-
 		// Buffers
-		std::string	_stream;
-		std::string _leftover;
 		std::string	_leftoverBody;
 
 		// Head Parser
@@ -65,6 +58,15 @@ class Request {
 		void setBodyType();
 		
 	public:
+		std::string _leftover;
+		std::string	_stream;
+		std::string _method;
+		t_uri		_uri;
+		std::map<std::string, std::string>  _headers;
+		
+		//Body
+		std::string	_body;
+
 		Request();
 		Request(const Request &other);
 		Request &operator=(const Request &other);
@@ -74,17 +76,17 @@ class Request {
 		bool parseRequestHead();
 		bool parseRequestBody();
 		
-		//Getters
+		// Getters
 		std::string	getMethod();
 		std::map<std::string, std::string>  getHeaders();
 		std::string	getBody();
 
-		// Testing only
-		void feedStream(const std::string &data) {
-            this->_stream += data;
-        }
+		// // Testing only
+		// void feedStream(const std::string &data) {
+		//     this->_stream += data;
+		// }
 
-        void feedBody(const std::string &data) {
-            this->_stream += data;
-        }
+		// void feedBody(const std::string &data) {
+		//     this->_stream += data;
+		// }
 };

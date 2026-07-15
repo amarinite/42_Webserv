@@ -1,0 +1,433 @@
+#include "TestUtils.hpp"
+#include "Http.hpp"
+#include <iostream>
+#include <map>
+#include <string>
+
+static void feed(Http& h, const std::string& s) {
+	h.HttpRoutine(const_cast<char*>(s.data()), s.size());
+}
+
+static bool testSimpleGetRequest()
+{
+	Http h;
+	feed(h, "GET /index.html HTTP/1.1\r\nHost: localhost\r\nUser-Agent: Mozilla\r\n\r\n");
+
+	ASSERT(h.getStatus() == PROCESSING);
+	ASSERT(h.getRequest().getMethod() == "GET");
+
+	std::map<std::string, std::string> headers = h.getRequest().getHeaders();
+	ASSERT(headers.count("host") == 1);
+	ASSERT(headers["host"] == "localhost");
+	ASSERT(headers.count("user-agent") == 1);
+	ASSERT(headers["user-agent"] == "Mozilla");
+	return true;
+}
+
+static bool testMissingHostHeaderThrows()
+{
+	Http h;
+	try {
+		feed(h, "GET /index.html HTTP/1.1\r\nUser-Agent: Mozilla\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testHeaderValueTrimming()
+{
+	Http h;
+	feed(h, "POST /api HTTP/1.1\r\nHost:   localhost:8080   \r\nContent-Type:  text/html; charset=utf-8  \r\nContent-Length: 0\r\n\r\n");
+
+	ASSERT(h.getStatus() == PROCESSING);
+	std::map<std::string, std::string> headers = h.getRequest().getHeaders();
+	ASSERT(headers["host"] == "localhost:8080");
+	ASSERT(headers["content-type"] == "text/html; charset=utf-8");
+	return true;
+}
+
+static bool testHeaderKeysAreCaseInsensitive()
+{
+	Http h;
+
+	try {
+		feed(h, "GET /a HTTP/1.1\r\nHOsT: example.com\r\nCONTENT-leNGTH: 0\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testDuplicateHostThrows()
+{
+	Http h;
+	try {
+		feed(h, "GET /a HTTP/1.1\r\nHost: localhost\r\nHost: duplicate.com\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testDuplicateContentLengthThrows()
+{
+	Http h;
+	try {
+		feed(h, "POST /a HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\nContent-Length: 10\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testInvalidMethodThrows()
+{
+	Http h;
+	try {
+		feed(h, "G3T /a HTTP/1.1\r\nHost: localhost\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400 || e.getStatusCode() == 405);
+	}
+	return true;
+}
+
+static bool testInvalidVersionThrows()
+{
+	Http h;
+	try {
+		feed(h, "GET /a HTTP/1.0\r\nHost: localhost\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400 || e.getStatusCode() == 505);
+	}
+	return true;
+}
+
+static bool testMalformedRequestLineThrows()
+{
+	Http h;
+	try {
+		feed(h, "GET /only-two-tokens\r\nHost: localhost1\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testHeaderWithoutColonThrows()
+{
+	Http h;
+	try {
+		feed(h, "GET /a HTTP/1.1\r\nHost localhost\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testEmptyHeaderKeyThrows()
+{
+	Http h;
+	try {
+		feed(h, "GET /a HTTP/1.1\r\n: value\r\nHost: localhost3\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testEmptyHeaderValueAccepted()
+{
+	Http h;
+	feed(h, "GET /a HTTP/1.1\r\nHost: localhost\r\nX-Empty:\r\n\r\n");
+
+	ASSERT(h.getStatus() == PROCESSING);
+	std::map<std::string, std::string> headers = h.getRequest().getHeaders();
+	ASSERT(headers.count("x-empty") == 1);
+	ASSERT(headers["x-empty"] == "");
+	return true;
+}
+
+static bool testContentLengthZero()
+{
+	Http h;
+	feed(h, "POST /upload HTTP/1.1\r\nHost: localhost1\r\nContent-Length: 0\r\n\r\n");
+
+	ASSERT(h.getStatus() == PROCESSING);
+	ASSERT(h.getRequest().getBody().empty());
+	return true;
+}
+
+static bool testContentLengthBodyTooShortNotDone()
+{
+	Http h;
+	feed(h, "POST /submit HTTP/1.1\r\nHost: localhost3\r\nContent-Length: 10\r\n\r\nHello");
+
+	ASSERT(h.getStatus() == READING_BODY);
+	return true;
+}
+
+static bool testNegativeContentLengthThrows()
+{
+	Http h;
+	try {
+		feed(h, "POST /submit HTTP/1.1\r\nHost: localhost\r\nContent-Length: -3\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testChunkedSingleChunkAccepted()
+{
+	Http h;
+	feed(h, "POST /stream HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n0\r\n\r\n");
+
+	ASSERT(h.getStatus() == PROCESSING);
+	ASSERT(h.getRequest().getBody() == "Hello");
+	return true;
+}
+
+static bool testChunkedMultipleChunksAccepted()
+{
+	Http h;
+	feed(h, "POST /stream HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n1\r\n \r\n5\r\nWorld\r\n0\r\n\r\n");
+
+	ASSERT(h.getStatus() == PROCESSING);
+	ASSERT(h.getRequest().getBody() == "Hello World");
+	return true;
+}
+
+static bool testChunkedInvalidHexSizeThrows()
+{
+	Http h;
+	try {
+		feed(h, "POST /stream HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\nZ\r\nHello\r\n0\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testChunkedMissingTerminatorNotDoneOrThrows400()
+{
+	Http h;
+	try {
+		feed(h, "POST /stream HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n0\r\n");
+		ASSERT(h.getStatus() == READING_BODY);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testBothContentLengthAndChunkedPolicy()
+{
+	Http h;
+	try {
+		feed(h, "POST /x HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n0\r\n\r\n");
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testGetMethodWithBodyThrows()
+{
+	Http h;
+	try {
+		feed(h, "GET /index.html HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\n\r\n12345");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testSpaceInHeaderKeyThrows()
+{
+	Http h;
+	try {
+		feed(h, "GET / HTTP/1.1\r\nHost : localhost\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testFragmentedHeaderParsing()
+{
+	Http h;
+	feed(h, "GET /index.h");
+	ASSERT(h.getStatus() == READING_HEADERS);
+	
+	feed(h, "tml HTTP/1.1\r\nHo");
+	ASSERT(h.getStatus() == READING_HEADERS);
+
+	feed(h, "st: localhost\r\n\r\n");
+	ASSERT(h.getStatus() == PROCESSING);
+	ASSERT(h.getRequest().getMethod() == "GET");
+	
+	std::map<std::string, std::string> headers = h.getRequest().getHeaders();
+	ASSERT(headers["host"] == "localhost");
+	return true;
+}
+
+
+// We wait for the Routine and socket to be done to test that.
+// static bool testFragmentedBodyParsing()
+// {
+// 	Http h;
+// 	feed(h, "POST /submit HTTP/1.1\r\nHost: localhost\r\nContent-Length: 10\r\n\r\n");
+// 	ASSERT(h.getStatus() == READING_BODY);
+
+// 	feed(h, "Hello");
+// 	ASSERT(h.getStatus() == READING_BODY);
+
+// 	feed(h, " World");
+// 	ASSERT(h.getStatus() == PROCESSING);
+// 	ASSERT(h.getRequest().getBody() == "Hello World");
+// 	return true;
+// }
+
+static bool testChunkedFragmentedPayload()
+{
+	Http h;
+	feed(h, "POST /stream HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n");
+	ASSERT(h.getStatus() == READING_BODY);
+
+	feed(h, "5\r\n");
+	ASSERT(h.getStatus() == READING_BODY);
+
+	feed(h, "Hello\r\n");
+	ASSERT(h.getStatus() == READING_BODY);
+
+	feed(h, "0\r\n\r\n");
+	ASSERT(h.getStatus() == PROCESSING);
+	ASSERT(h.getRequest().getBody() == "Hello");
+	return true;
+}
+
+static bool testInvalidDelimiterInRequestLineThrows()
+{
+	Http h;
+	try {
+		feed(h, "GET /index.html HTTP/1.1\nHost: localhost\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testInvalidLineEndingInHeaderThrows()
+{
+	Http h;
+	try {
+		feed(h, "GET /index.html HTTP/1.1\r\nHost: localhost\nConnection: close\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testInvalidContentLengthNonNumericThrows()
+{
+	Http h;
+	try {
+		feed(h, "POST /api HTTP/1.1\r\nHost: localhost\r\nContent-Length: 12a3\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+static bool testMultiLineHeaderValueFoldingSupported()
+{
+	Http h;
+	feed(h, "GET / HTTP/1.1\r\nHost: localhost\r\nX-Custom: val1\r\nX-Custom: val2\r\n\r\n");
+	ASSERT(h.getStatus() == PROCESSING);
+	std::map<std::string, std::string> headers = h.getRequest().getHeaders();
+	ASSERT(headers["x-custom"] == "val1, val2");
+	return true;
+}
+
+static bool testChunkedInvalidTerminatorThrows()
+{
+	Http h;
+	try {
+		feed(h, "POST /stream HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHelloX\r\n0\r\n\r\n");
+		ASSERT(false);
+	} catch (const HttpException& e) {
+		ASSERT(e.getStatusCode() == 400);
+	}
+	return true;
+}
+
+void runHttpRequestTests(int& passed, int& failed)
+{
+	Test tests[] = {
+		{ "Test 1: Simple GET request head",                   testSimpleGetRequest },
+		{ "Test 2: Missing Host throws 400",                   testMissingHostHeaderThrows },
+		{ "Test 3: Header value trimming",                     testHeaderValueTrimming },
+		{ "Test 4: Header keys case-insensitive / GET policy", testHeaderKeysAreCaseInsensitive },
+		{ "Test 5: Duplicate Host throws 400",                 testDuplicateHostThrows },
+		{ "Test 6: Duplicate Content-Length throws 400",       testDuplicateContentLengthThrows },
+		{ "Test 7: Invalid method throws",                     testInvalidMethodThrows },
+		{ "Test 8: Invalid HTTP version throws",               testInvalidVersionThrows },
+		{ "Test 9: Malformed request line throws",             testMalformedRequestLineThrows },
+		{ "Test 10: Header without colon throws",              testHeaderWithoutColonThrows },
+		{ "Test 11: Empty header key throws",                  testEmptyHeaderKeyThrows },
+		{ "Test 12: Empty header value accepted",              testEmptyHeaderValueAccepted },
+		{ "Test 13: Content-Length zero body",                 testContentLengthZero },
+		{ "Test 15: Content-Length too short body => not done",testContentLengthBodyTooShortNotDone },
+		{ "Test 16: Negative Content-Length throws",           testNegativeContentLengthThrows },
+		{ "Test 18: Chunked single chunk accepted",            testChunkedSingleChunkAccepted },
+		{ "Test 19: Chunked multiple chunks accepted",         testChunkedMultipleChunksAccepted },
+		{ "Test 20: Chunked invalid size throws",              testChunkedInvalidHexSizeThrows },
+		{ "Test 21: Chunked missing terminator",               testChunkedMissingTerminatorNotDoneOrThrows400 },
+		{ "Test 23: Both CL and chunked policy",               testBothContentLengthAndChunkedPolicy },
+		{ "Test 24: GET method with body throws 400",          testGetMethodWithBodyThrows },
+		{ "Test 25: Space in header key throws 400",           testSpaceInHeaderKeyThrows },
+		{ "Test 26: Fragmented header parsing",                testFragmentedHeaderParsing },
+		// { "Test 27: Fragmented body parsing",                  testFragmentedBodyParsing },
+		{ "Test 28: Chunked fragmented payload",               testChunkedFragmentedPayload },
+		{ "Test 29: Invalid delimiter in request line (\\n)",  testInvalidDelimiterInRequestLineThrows },
+		{ "Test 30: Invalid line ending in headers",           testInvalidLineEndingInHeaderThrows },
+		{ "Test 31: Content-Length with non-numeric chars",    testInvalidContentLengthNonNumericThrows },
+		{ "Test 32: Multi-line header folding concatenation",  testMultiLineHeaderValueFoldingSupported },
+		{ "Test 33: Chunked body invalid size block terminator",testChunkedInvalidTerminatorThrows }
+	};
+
+	int localPassed = 0;
+	int localFailed = 0;
+
+	for (int i = 0; i < (int)ARRAY_SIZE(tests); i++)
+	{
+		if (tests[i].fn())
+			localPassed++;
+		else {
+			std::cout << RED << "  [FAIL] " << tests[i].name << "\n" << RESET;
+			localFailed++;
+		}
+	}
+
+	printTestSummary("HttpRequest", localPassed, localFailed);
+
+	passed += localPassed;
+	failed += localFailed;
+}
