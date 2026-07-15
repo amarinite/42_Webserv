@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 #include <vector>
 #include <map>
 #include "ParseConfig.hpp"
@@ -10,9 +11,9 @@ class ServerConfig
 {
 	private:
 		std::vector<ListenAddr>		_listen;
-		std::map<int, t_uri>		_error_pages;
+		std::map<int, std::string>	_error_pages;
 		int							_client_max_body_size;
-		t_uri						_root;
+		std::string					_root;
 		std::string					_index;
 		std::vector<LocationConfig>	_locations;
 
@@ -30,9 +31,9 @@ class ServerConfig
 		static ServerConfig					build(Node* serverNode);
 
 		const std::vector<ListenAddr>&		getListen() const;
-		const std::map<int, t_uri>&			getErrorPages() const;
+		const std::map<int, std::string>&	getErrorPages() const;
 		int									getClientMaxBodySize() const;
-		const t_uri&						getRoot() const;
+		const std::string&					getRoot() const;
 		const std::string&					getIndex() const;
 		const std::vector<LocationConfig>&	getLocations() const;
 		const LocationConfig&				getLocationConfig(const t_uri& uri) const;

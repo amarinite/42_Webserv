@@ -2,10 +2,13 @@
 
 void runLexerTests(int& passed, int& failed);
 void runParseConfigTests(int& passed, int& failed);
+void runConfigValidatorTests(int& passed, int& failed);
 void runSocketTests(int &passed, int &failed);
 void runUriTests(int& passed, int& failed);
 void runHttpRequestTests(int& passed, int& failed);
+void runServerConfigTests(int& passed, int& failed);
 void runLocationConfigTests(int& passed, int& failed);
+void runConfigBuildTests(int& passed, int& failed);
 
 int main()
 {
@@ -14,10 +17,13 @@ int main()
 
 	runLexerTests(passed, failed);
 	runParseConfigTests(passed, failed);
+	runConfigValidatorTests(passed, failed);
 	runSocketTests(passed, failed);
 	runUriTests(passed, failed);
 	runHttpRequestTests(passed, failed);
+	runServerConfigTests(passed, failed);
 	runLocationConfigTests(passed, failed);
+	runConfigBuildTests(passed, failed);
 
 	std::cout << "\n" << passed << " passed, " << failed << " failed\n";
 	return (failed > 0 ? 1 : 0);
