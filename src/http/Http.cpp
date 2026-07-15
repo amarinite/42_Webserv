@@ -54,18 +54,6 @@ void Http::handleBuffer(char *buff, size_t bytesRead) {
 	addLeftover(rawBuff, rawBuffSize);
 
 	_request._stream = rawBuff;
-	// std::string head = rawBuff;
-	// size_t bodyStart = 0;
-
-	// if (_status == READING_HEADERS) {
-	// 	size_t end = head.find("\r\n\r\n");
-	// 	if (end == std::string::npos) {
-	// 		_request._stream = head;
-	// 		return;
-	// 	}
-	// 	bodyStart = end + 4;
-	// }
-	// _request._stream = head.substr(0, bodyStart);
 }
 
 bool Http::methodGetCase() {
@@ -74,8 +62,21 @@ bool Http::methodGetCase() {
 	if (_request._headers.count("content-length") > 0
 		|| _request._headers.count("transfer-encoding") > 0)
 		throw HttpException(400, "Bad Request: Body Present in GET Method.");
-	_status = PROCESSING;
 	return true;
+}
+
+
+la_funct_del_isaac() {
+	// Deberia ser algo asi:
+	Http Request; 
+	char buffer[cantidad];
+	size_t bytesRead = recv(something, &buffer, something);
+	try {
+		Request.httpRoutine(buffer, bytesRead);
+	} catch (const HttpException& e) {
+		Request._status = WRITING_RESPONSE;
+		buildResponse();
+	}
 }
 
 void Http::HttpRoutine(char *buff, size_t bytesRead) {
@@ -106,8 +107,16 @@ void Http::HttpRoutine(char *buff, size_t bytesRead) {
 			// Segurament no fa falta.
 			break;
 		}
-	}	
+	}
 }
+
+void Http::buildResponse(const HttpException& e) {
+	_response.assignHead(e);
+	_response.assignHeaders(_request._headers);
+}
+
+
+
 
 // Getters
 State Http::getStatus() const {

@@ -82,7 +82,7 @@ bool Request::parseMethod() {
 		if (!this->_httpVerParsed)
 			return false;
 		if (_httpVer != "HTTP/1.1")
-			throw HttpException(400, "Bad Request: Incorrect HTTP Protocol");
+			throw HttpException(505, "HTTP Version Not Supported");
 		if (!safeEnd())
 			return false;
 	}
@@ -240,6 +240,7 @@ void Request::setBodyType() {
 	else if (!hasContentLength && !hasTransferEncoding) {
 		if (_stream.size() > 0)
 			_leftover = _stream;
+		_bodyType = NO_BODY;
 	}
 	else if (hasContentLength) {
 		_bodyType = FULL;
@@ -324,6 +325,8 @@ bool Request::chunkedBody() {
 
 bool Request::parseRequestBody() {
 	setBodyType();
+	if (_bodyType == NO_BODY)
+		return true;
 	if (_bodyType == FULL) {
 		if(!fullBody())
 			return false;
