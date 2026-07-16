@@ -1,8 +1,8 @@
 #include "ServerConfig.hpp"
 
-ServerConfig::ServerConfig()
-	: _client_max_body_size(1000000), _index("index.html")
+ServerConfig::ServerConfig() : _client_max_body_size(1000000), _index()
 {
+	_index.push_back("index.html");
 }
 
 std::map<std::string, ServerConfig::DirectiveHandler> ServerConfig::initHandlers()
@@ -74,7 +74,9 @@ void ServerConfig::setRoot(const Node* n)
 
 void ServerConfig::setIndex(const Node* n)
 {
-	_index = n->args[0];
+	_index.clear();
+	for (size_t i = 0; i < n->args.size(); i++)
+		_index.push_back(n->args[i]);
 }
 
 const std::vector<ListenAddr>& ServerConfig::getListen() const
@@ -97,7 +99,7 @@ const std::string& ServerConfig::getRoot() const
 	return _root;
 }
 
-const std::string& ServerConfig::getIndex() const
+const std::vector<std::string>& ServerConfig::getIndex() const
 {
 	return _index;
 }

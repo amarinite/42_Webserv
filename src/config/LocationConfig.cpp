@@ -1,9 +1,9 @@
 #include "LocationConfig.hpp"
 #include "ServerConfig.hpp"
 
-LocationConfig::LocationConfig()
-	: _autoindex(false), _index("index.html")
+LocationConfig::LocationConfig() : _autoindex(false), _index()
 {
+	_index.push_back("index.html");
 	_allowed_methods.push_back("GET");
 }
 
@@ -98,7 +98,9 @@ void LocationConfig::setRoot(const Node* n)
 
 void LocationConfig::setIndex(const Node* n)
 {
-	_index = n->args[0];
+	_index.clear();
+	for (size_t i = 0; i < n->args.size(); i++)
+		_index.push_back(n->args[i]);
 }
 
 bool LocationConfig::hasAutoindex() const
@@ -146,7 +148,7 @@ const std::string& LocationConfig::getRoot() const
 	return _root;
 }
 
-const std::string& LocationConfig::getIndex() const
+const std::vector<std::string>& LocationConfig::getIndex() const
 {
 	return _index;
 }
