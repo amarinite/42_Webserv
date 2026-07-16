@@ -60,7 +60,7 @@ static bool testLocationConfigDirectives()
 	delete locationNode;
 
 	ASSERT(loc.getPath().path == "/downloads");
-	ASSERT(loc.getRoot().path == "/var/www");
+	ASSERT(loc.getRoot() == "/var/www");
 	ASSERT(loc.getIndex() == "main.html");
 	ASSERT(loc.hasAutoindex() == true);
 	
@@ -97,7 +97,7 @@ static bool testLocationConfigBuildDefault()
 	// 3. Assertions
 	ASSERT(loc.getPath().path == "/");
 	
-	ASSERT(loc.getRoot().path == "/var/www/default_fallback"); 
+	ASSERT(loc.getRoot() == "/var/www/default_fallback"); 
 	ASSERT(loc.getIndex() == "welcome.html");
 	
 	ASSERT(loc.getAllowedMethods().size() == 1);
@@ -139,7 +139,7 @@ static bool testLocationConfigInheritance()
 	delete locationNode;
 
 	ASSERT(loc.getPath().path == "/api");
-	ASSERT(loc.getRoot().path == "/var/www/main_company");
+	ASSERT(loc.getRoot() == "/var/www/main_company");
 	ASSERT(loc.getIndex() == "home.html");
 	ASSERT(loc.getAllowedMethods().size() == 1);
 	ASSERT(loc.getAllowedMethods()[0] == "POST");

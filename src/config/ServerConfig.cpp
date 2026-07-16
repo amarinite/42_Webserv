@@ -58,9 +58,7 @@ void ServerConfig::setErrorPage(const Node* n)
 {
 	int code = parseNumber(n->args[0]);
 
-	t_uri uri;
-	parseUri(uri, n->args[1]);
-	_error_pages[code] = uri;
+	_error_pages[code] = n->args[1];
 }
 
 void ServerConfig::setClientMaxBodySize(const Node* n)
@@ -71,10 +69,7 @@ void ServerConfig::setClientMaxBodySize(const Node* n)
 
 void ServerConfig::setRoot(const Node* n)
 {
-	t_uri uri;
-	parseUri(uri, n->args[0]);
-
-	_root = uri;
+	_root = n->args[0];
 }
 
 void ServerConfig::setIndex(const Node* n)
@@ -87,7 +82,7 @@ const std::vector<ListenAddr>& ServerConfig::getListen() const
 	return _listen;
 }
 
-const std::map<int, t_uri>& ServerConfig::getErrorPages() const
+const std::map<int, std::string>& ServerConfig::getErrorPages() const
 {
 	return _error_pages;
 }
@@ -97,7 +92,7 @@ int ServerConfig::getClientMaxBodySize() const
 	return _client_max_body_size;
 }
 
-const t_uri& ServerConfig::getRoot() const
+const std::string& ServerConfig::getRoot() const
 {
 	return _root;
 }
