@@ -18,7 +18,7 @@ std::string Server::fullPath(std::string &root, std::string &path) {
 		_fullpath =  root + "/" + path;
 	}
 	_fullpath = root + path;
-}
+} ////////////////////// Aquesta ffunct lhauriem de llencar abans de entrar a PROCESS i guardar el resultat dins el noou objecte.
 
 /**
  * @brief Checks if the requested file exists 
@@ -31,7 +31,7 @@ void Server::validatePath() {
 	if (stat(_fullPath.c_str(), &buff) != 0)
 		throw HttpException(404, "Not Found.");
 	if (!(buffer.st_mode & S_IRUSR))
-        throw HttpException(403, "Forbidden.");
+		throw HttpException(403, "Forbidden.");
 }
 
 /**
@@ -41,11 +41,11 @@ void Server::validatePath() {
  * @throws HttpException 403 if the server has no access to it.
  */
 void Server::validateDir() {
-    struct stat buff;
+	struct stat buff;
 	if (stat(_fullPath.c_str(), &buff) != 0)
 		throw HttpException(404, "Not Found.");
-    if (!S_ISDIR(buff.st_mode))
-        throw HttpException(403, "Forbidden.");
+	if (!S_ISDIR(buff.st_mode))
+		throw HttpException(403, "Forbidden.");
 }
 
 /**
@@ -66,13 +66,13 @@ std::string Server::getFullPath() {
  * @return std::string The binary or text contents of the requested file.
  * @throws HttpException 404 if the file cannot be opened.
  */
-std::string Server::extractBodyFromFile() {
+void Server::extractBodyFromFile() {
 	std::ifstream file(_fullpath.c_str(), std::ios::binary);
 	if (!file)
 		throw HttpException(404, "Not Found.");
 	std::ostringstream ss;
 	ss << file.rdbuf();
-	return ss.str();
+	_responseBody = s ss.str();
 }
 
 /**
@@ -82,14 +82,14 @@ std::string Server::extractBodyFromFile() {
  * @return std::string Extension of the file.
  * @throws HttpException 400 if the extension has a non contemplated length.
  */
-std::string Server::findExtension() {
+void Server::findExtension() {
 	size_t dot = _fullpath.rfind('.');
 	// if (dot == std::string::npos || dot == _fullpath.size() - 1)
 	// 	throw HttpException(400, "Bad Request: missing extension.");
 	if ((_fullpath.size() - dot) > 5)
 		throw HttpException(400, "Bad Request: bad extension.");
 	MimeTypes map;
-	return map.getType(_fullpath.substr(dot));
+	_extension = map.getType(_fullpath.substr(dot));
 }
 
 // For DELETE
@@ -102,14 +102,6 @@ void Server::removeFile() {
 	bool rm = std::remove(_fullpath);
 	if (rm != 0)
 		throw HttpException(500, "Internal Server Error: Couldnt remove file.");
-}
-
-std::string Server::messageDelete() {
-	return "No Content";
-}
-
-size_t Server::codeDelete() {
-	return 204;
 }
 
 // For POST
@@ -127,15 +119,50 @@ void Server::createFile() {
 		throw HttpException(500, "Internal Server Error: error creating file.");
 }
 
-std::string Server::messageDelete() {
-	return "Created";
+/**
+ * @brief Unifies de functions of GET method and sets the Status code and message.
+ */
+void Server::handleGet() {
+	validatePath();
+	findExtension();
+	extractBodyFromFile();
+	_code = 200;
+	_codeMsg = "Ok";
 }
 
-size_t Server::codeDelete() {
-	return 201;
+/**
+ * @brief Unifies de functions of POST method and sets the Status code and message.
+ */
+void Server::handlePost() {
+	validateDirectory();
+	createFile();
+	_code = 201;
+	_codeMsg = "Created";
+}
+
+/**
+ * @brief Unifies de functions of DELETE method and sets the Status code and message.
+ */
+void Server::handleDelete() {
+	validatePath();
+	removeFile();
+	_code = 204;
+	_codeMsg = "No Content";
 }
 
 // Routine
-void Server::routine() {
-    
+/**
+ * @brief Derives the processing of the request to a handler depending on the Method.
+ * 
+ * @param method Method extracted in the Parse of the Http Request. 
+ */
+void Server::routine(std::string &method) {
+	switch(method) {
+		case GET:
+			handleGet();
+		case POST:
+			handlePost();
+		case DELETE:
+			handleDelete();
+	}
 }
