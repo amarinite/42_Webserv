@@ -53,7 +53,7 @@ static bool testServerConfigDirectives()
 	ASSERT(config.getListen()[0].host == "0.0.0.0");
 	ASSERT(config.getListen()[0].port == 8080);
 	ASSERT(config.getRoot() == "/var/www");
-	ASSERT(config.getIndex() == "main.html");
+	ASSERT(config.getIndex()[0] == "main.html");
 	ASSERT(config.getClientMaxBodySize() == 2048);
 
 	return true;
@@ -76,7 +76,7 @@ static bool testServerConfigDefaults()
 	delete serverNode;
 
 	// defaults from the ServerConfig() ctor
-	ASSERT(config.getIndex() == "index.html");
+	ASSERT(config.getIndex()[0] == "index.html");
 	ASSERT(config.getClientMaxBodySize() == 1000000);
 
 	return true;
@@ -199,7 +199,7 @@ static bool testServerConfigNoRootLocationInjectsDefault()
 		{
 			foundDefault = true;
 			ASSERT(loc.getRoot() == "/var/www");
-			ASSERT(loc.getIndex() == "home.html");
+			ASSERT(loc.getIndex()[0] == "home.html");
 		}
 		if (loc.getPath().path == "/uploads")
 			foundUploads = true;

@@ -17,7 +17,7 @@ class LocationConfig
 		std::string							_upload_store;
 		std::map<std::string, std::string>	_cgi_extension;
 		std::string							_root;
-		std::string							_index;
+		std::vector<std::string>			_index;
 
 		typedef void (LocationConfig::*DirectiveHandler)(const Node*);
 		static std::map<std::string, DirectiveHandler>	initHandlers();
@@ -45,6 +45,6 @@ class LocationConfig
 		const std::string&							getUploadStore() const;
 		const std::map<std::string, std::string>&	getCgiExtension() const;
 		const std::string&							getRoot() const;
-		const std::string&							getIndex() const;
+		const std::vector<std::string>&				getIndex() const;
 		
 };

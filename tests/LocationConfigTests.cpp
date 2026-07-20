@@ -61,7 +61,7 @@ static bool testLocationConfigDirectives()
 
 	ASSERT(loc.getPath().path == "/downloads");
 	ASSERT(loc.getRoot() == "/var/www");
-	ASSERT(loc.getIndex() == "main.html");
+	ASSERT(loc.getIndex()[0] == "main.html");
 	ASSERT(loc.hasAutoindex() == true);
 	
 	ASSERT(loc.getAllowedMethods().size() == 2); 
@@ -98,7 +98,7 @@ static bool testLocationConfigBuildDefault()
 	ASSERT(loc.getPath().path == "/");
 	
 	ASSERT(loc.getRoot() == "/var/www/default_fallback"); 
-	ASSERT(loc.getIndex() == "welcome.html");
+	ASSERT(loc.getIndex()[0] == "welcome.html");
 	
 	ASSERT(loc.getAllowedMethods().size() == 1);
 	ASSERT(loc.getAllowedMethods()[0] == "GET");
@@ -140,7 +140,7 @@ static bool testLocationConfigInheritance()
 
 	ASSERT(loc.getPath().path == "/api");
 	ASSERT(loc.getRoot() == "/var/www/main_company");
-	ASSERT(loc.getIndex() == "home.html");
+	ASSERT(loc.getIndex()[0] == "home.html");
 	ASSERT(loc.getAllowedMethods().size() == 1);
 	ASSERT(loc.getAllowedMethods()[0] == "POST");
 

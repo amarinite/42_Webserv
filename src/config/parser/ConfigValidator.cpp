@@ -260,19 +260,25 @@ void ConfigValidator::validateRoot(const Node* node)
 
 void ConfigValidator::validateIndex(const Node* node)
 {
+	std::set<std::string> seen;
 	for (size_t i = 0; i < node->args.size(); i++)
 	{
-		if (node->args[i].empty())
-			throw ConfigException("invalid index directive", node->line);
+		if (!seen.insert(node->args[i]).second)
+			throw ConfigException("duplicate index directive", node->line);
 	}
 }
 
 void ConfigValidator::validateAllowedMethods(const Node* node)
 {
+	std::set<std::string> seen;
+
 	for (size_t i = 0; i < node->args.size(); i++)
 	{
 		if (node->args[i] != "GET" && node->args[i] != "POST" && node->args[i] != "DELETE")
 			throw ConfigException("invalid methods directive", node->line);
+
+		if (!seen.insert(node->args[i]).second)
+			throw ConfigException("duplicate methods directive", node->line);
 	}
 }
 

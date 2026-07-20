@@ -34,7 +34,7 @@ all: $(NAME)
 $(NAME): $(OBJ)
 	@echo "$(BLUE)linking objects...$(RESET)"
 	@$(CXX) $(CXXFLAGS) $(OBJ) -o $(NAME)
-	@echo "$(GREEN)$(NAME) has been served $(RESET)🍲"
+	@echo "$(GREEN)$(NAME) ready $(RESET)🍲"
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp  Makefile | $(OBJ_DIR)
 	@mkdir -p $(dir $@)
