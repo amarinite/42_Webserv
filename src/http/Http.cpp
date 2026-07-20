@@ -96,7 +96,7 @@ void Http::HttpRoutine(char *buff, size_t bytesRead) {
 			break;
 		}
 		case PROCESSING: {
-			//Alba
+			
 			break;
 		}
 		case WRITING_RESPONSE: {

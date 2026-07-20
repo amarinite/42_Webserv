@@ -18,7 +18,7 @@ std::string Server::fullPath(std::string &root, std::string &path) {
 		_fullpath =  root + "/" + path;
 	}
 	_fullpath = root + path;
-} ////////////////////// Aquesta ffunct lhauriem de llencar abans de entrar a PROCESS i guardar el resultat dins el noou objecte.
+}
 
 /**
  * @brief Checks if the requested file exists 
@@ -156,7 +156,8 @@ void Server::handleDelete() {
  * 
  * @param method Method extracted in the Parse of the Http Request. 
  */
-void Server::routine(std::string &method) {
+void Server::routine(std::string &method, std::string &root, std::string &path) {
+	fullPath(std::string &root, std::string &path);
 	switch(method) {
 		case GET:
 			handleGet();
