@@ -124,3 +124,4 @@ Request &Http::getRequest() {
 ////////////////////////
 // Revisa si inicialitzes correctament la request i la response. 
 // - Maybe el constructor per defecte de request hauria de fer inicialitzacio basica. 
+

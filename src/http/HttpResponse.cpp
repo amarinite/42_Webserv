@@ -22,11 +22,15 @@ std::string Response::getTime() {
 }
 
 void Response::assignHeaders(std::string &extension) {
+	// 204, 304
 	_headers["Server: "] = "webserv42";
 	_headers["Date: "] = getTime();
+	_headers["Connection: "] = _request.getConnection();
+	if ()
+
 	_headers["Content-Type: "] = _mimeMap.getType(extension);
 	_headers["Content-Length: "] = _responseBody.size();
-	_Headers["Connection: "] = _request.getConnection();
+	
 }
 
 void Response::assignBody(std::string &body) {
@@ -41,3 +45,5 @@ void Response::buildRawResponse() {
 	_rawResponse = 
 
 }
+
+// 400
