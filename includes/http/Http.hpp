@@ -16,12 +16,14 @@ enum State {
 class Http {
 	private:
 		// Config goes here.
-		std::string	_rawBuff;
-		size_t		_rawBuffSize;
+		std::string		_rawBuff;
+		size_t			_rawBuffSize;
 		
-		State		_status;
-		Request		_request;
-		// Response	_response;
+		State			_status;
+		Request			_request;
+		Processor		_proces;
+		Response		_response;
+		LocationConfig	_locConf;
 		
 		//Functs
 		void addLeftover(std::string &rawBuff, size_t &rawBuffSize);

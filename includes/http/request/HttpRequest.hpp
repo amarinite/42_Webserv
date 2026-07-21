@@ -80,6 +80,7 @@ class Request {
 		std::string	getMethod();
 		std::map<std::string, std::string>  getHeaders();
 		std::string	getBody();
+		std::string getPath();
 
 		// // Testing only
 		// void feedStream(const std::string &data) {

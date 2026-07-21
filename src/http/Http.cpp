@@ -96,7 +96,8 @@ void Http::HttpRoutine(char *buff, size_t bytesRead) {
 			break;
 		}
 		case PROCESSING: {
-			
+			_proces = p(_request, _response, _locConf);
+			proces.processorRoutine();
 			break;
 		}
 		case WRITING_RESPONSE: {
