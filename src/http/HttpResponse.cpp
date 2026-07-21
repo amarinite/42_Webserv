@@ -26,8 +26,6 @@ void Response::assignHeaders(std::string &extension) {
 	_headers["Server: "] = "webserv42";
 	_headers["Date: "] = getTime();
 	_headers["Connection: "] = _request.getConnection();
-	if ()
-
 	_headers["Content-Type: "] = _mimeMap.getType(extension);
 	_headers["Content-Length: "] = _responseBody.size();
 	
@@ -46,4 +44,5 @@ void Response::buildRawResponse() {
 
 }
 
-// 400
+// 400, 404, 405, 403, 500, 502 503, 504  
+// 301 200 204
