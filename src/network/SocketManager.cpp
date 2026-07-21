@@ -1,32 +1,43 @@
 #include "SocketManager.hpp"
 
-SocketManager::SocketManager(const std::string &host, const int &port) :
-	_listener(host, port)
+SocketManager::SocketManager()
 {
 }
 
 SocketManager::~SocketManager()
 {
+	for (size_t i = 0; i < _listeners.size(); i++)
+		delete _listeners[i];
 	for (size_t i = 0; i < _clients.size(); i++)
 		delete _clients[i];
+	for (std::map<int, Request*>::iterator it = _requests.begin(); it != _requests.end(); ++it)
+		delete it->second;
 }
 
-void SocketManager::setup()
+void SocketManager::setup(const std::vector<ServerConfig> &configs)
 {
-	_listener.createSocket();
-	_listener.setReuseAddr();
-	_listener.bindSocket();
-	_listener.listenSocket();
-	_listener.setNonBlocking();
+	for (size_t i = 0; i < configs.size(); i++)
+	{
+		const std::vector <ListenAddr> &addrs = configs[i].getListen();
 
-	struct pollfd listenerPfd;
-	listenerPfd.fd = _listener.getFD();
-	listenerPfd.events = POLLIN;
-	listenerPfd.revents = 0;
+		for (size_t j = 0; j < addrs.size(); j++)
+		{
+			HandleSocket *listener = new HandleSocket(addrs[j].host, addrs[j].port);
+			listener->createSocket();
+			listener->setReuseAddr();
+			listener->bindSocket();
+			listener->listenSocket();
+			listener->setNonBlocking();
 
-	_pollFds.push_back(listenerPfd);
+			_listeners.push_back(listener);
+			_listenerConfig[listener->getFD()] = &configs[i];
 
-	//std::cout << "SocketManager Listo, escuchando en el puerto " << _listener.getPort() << " con fd " << _listener.getFD() << std::endl;
+			addToPoll(listener->getFD());
+			std::cout << "Escuchando " << addrs[j].host << ":" << addrs[j].port << " con fd " << listener->getFD() << std::endl;
+		}
+
+	}
+
 }
 
 void SocketManager::run()
@@ -40,8 +51,9 @@ void SocketManager::run()
 		{
 			if (!(_pollFds[i].revents & POLLIN))
 				continue;
-			if (_pollFds[i].fd == _listener.getFD())
-				handleNewConnection();
+			int fd = _pollFds[i].fd;
+			if (_listenerConfig.find(fd) != _listenerConfig.end())
+				handleNewConnection(fd);
 			else
 			{
 				handleClientData(i);

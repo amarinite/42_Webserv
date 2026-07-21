@@ -1,5 +1,6 @@
 #include <iostream>
 #include "FileUtils.hpp"
+#include "ServerManager.hpp"
 #include "Lexer.hpp"
 #include "ParseConfig.hpp"
 #include "ConfigValidator.hpp"
@@ -28,11 +29,10 @@ int main(int argc, char** argv)
 		ConfigValidator::validate(tree);
 
 		Config config = Config::build(tree);
-
 		delete tree;
 
-		// ServerManager manager(config);
-		// manager.run();
+		ServerManager manager(config);
+		manager.run();
 
 		std::cout << "Config loaded successfully (" << config.getServers().size()
 			<< " server block(s)). ServerManager not yet implemented.\n";
