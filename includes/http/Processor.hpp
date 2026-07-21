@@ -29,7 +29,7 @@ class Processor {
 
 		LocationConfig	_lc;
 		Request			_req;
-		Response		_res;
+		// Response		_res;
 
 	public:
 		

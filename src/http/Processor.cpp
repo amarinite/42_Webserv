@@ -111,14 +111,38 @@ std::string Processor::getFullPath() {
  * @return std::string Extension of the file.
  * @throws HttpException 400 if the extension has a non contemplated length.
  */
-void Processor::findExtension() {
+std::string Processor::findExtension() {
 	size_t dot = _fullpath.rfind('.');
-	// if (dot == std::string::npos || dot == _fullpath.size() - 1)
-	// 	throw HttpException(400, "Bad Request: missing extension.");
-	if ((_fullpath.size() - dot) > 5)
-		throw HttpException(400, "Bad Request: bad extension.");
+		return _fullpath.substr(dot);
+	if (dot == std::string::npos)
+		return "";
+	else if (dot == _fullpath.size() - 1)
+		throw HttpException(400, "Bad Request: missing extension.");
+}
+
+/**
+ * @brief Checks if the extension is valid cgi.
+ * 
+ * @param ext extension to verify.
+ * @return true if it is a cgi extension.
+ * @return false if it is not a cgi extension.
+ */
+bool Processor::CgiExtension(const std::string &ext) {
+	std::map<std::string, std::string>::iterator it = _lc.getCgiExtension().find(ext);
+	if (it != _lc.getCgiExtension().end())
+		if (validateFile(it->second)
+			return true;
+	return false;
+}
+
+/**
+ * @brief Checks if the extension is valid.
+ * 
+ * @param ext extension to verify.
+ */
+void Processor::fileExtension(const std::string &ext) {
 	MimeTypes map;
-	_extension = map.getType(_fullpath.substr(dot));
+	_extension = map.getType(ext);
 }
 
 // For DELETE
@@ -134,6 +158,25 @@ void Processor::removeFile() {
 }
 
 // For POST
+void Processor::handleMultipart(std::string &content) {
+	size_t pos = content.find("boundary")
+	if (pos == content.end())
+		throw HttpException(400, "Bad Request: Bad Header");
+	std::string boundary = "--" + content.substr(10);
+}
+
+void Processor::handleContentType() {
+	std::map<std::string, std::string>::iterator it = _req._headers.find("content-type");
+	if (it == _req._headers.end())
+		throw HttpException(400, "Bad Request: Missing Content-Type header");
+	if (it->second.find("multipart/form-data"))
+		handleMultipart(it->second);
+	else if (it->second.find("application/x-www-form-urlencoded"))
+		handleXForm(it->second);
+	else if (it->second.find("text/plain") || it->second.find("application/octet-stream"))
+		handlePlainTxt(it->second);
+}
+
 /**
  * @brief Creates a file and fill it with the body parsed in the Http Request.
  * 
@@ -213,8 +256,7 @@ void Processor::handleGet() {
 			findExtension();
 			extractBodyFromFile();
 		case PATH:
-			std::string idxPath = findIndexPage();
-			if (!idxPath)
+			if (!findIndexPage())
 				doAutoIndex();
 	}
 	_code = 200;
