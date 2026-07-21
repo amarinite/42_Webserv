@@ -23,7 +23,7 @@ std::string Response::getTime() {
 
 void Response::assignHeaders(std::string &extension) {
 	// 204, 304
-	_headers["Server: "] = "webserv42";
+	_headers["Server: "] = "Grupo de Afectados por Taha"; -> No obligatori.
 	_headers["Date: "] = getTime();
 	_headers["Connection: "] = _request.getConnection();
 	_headers["Content-Type: "] = _mimeMap.getType(extension);
@@ -32,6 +32,7 @@ void Response::assignHeaders(std::string &extension) {
 }
 
 void Response::assignBody(std::string &body) {
+	if ()
 	_responseBody = body;
 }
 
