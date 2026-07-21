@@ -26,7 +26,7 @@ void SocketManager::setup()
 
 	_pollFds.push_back(listenerPfd);
 
-	std::cout << "SocketManager Listo, escuchando en el puerto " << _listener.getPort() << " con fd " << _listener.getFD() << std::endl;
+	//std::cout << "SocketManager Listo, escuchando en el puerto " << _listener.getPort() << " con fd " << _listener.getFD() << std::endl;
 }
 
 void SocketManager::run()
