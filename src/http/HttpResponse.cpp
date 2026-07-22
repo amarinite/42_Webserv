@@ -79,7 +79,7 @@ void Response::setAllowedMethodsHeader(std::vector<std::string> &allowed) {
 	_headers["Allow: "] = oss.str();
 }
 
-void prepareResponse() {
+void Response::prepareResponse() {
 	
 }
 
