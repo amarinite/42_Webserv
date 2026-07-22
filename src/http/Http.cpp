@@ -1,29 +1,15 @@
 #include "Http.hpp"
 
-Http::Http() : _rawBuff(""),
+Http::Http(ServerConfig	&sc) : _rawBuff(""),
 	_rawBuffSize(0),
 	_status(READING_HEADERS),
-	_request()
-{}
-
-// Http::Http(const HandleSocket &socket) : _status(READING_HEADERS), _socket(socket) {}
-
-Http::Http(const Http &other) {
-	*this = other;
+	_request(),
+	_response(),
+	_sConfig(sc) {
+		_processor(_request, _sConfig.getLocationConfig(_request._uri));
 }
 
-Http &Http::operator=(const Http &other) {
-	if (this != &other) {
-		_rawBuff = other._rawBuff;
-		_rawBuffSize = other._rawBuffSize;
-		_status = other._status;
-		_request = other._request;
-		// _response = other._response;
-	}
-	return *this;
-}
-
-Http::~Http() {}
+// Http::~Http() {}
 
 //Functs
 void Http::addLeftover(std::string &rawBuff, size_t &rawBufferSize) {
@@ -54,18 +40,6 @@ void Http::handleBuffer(char *buff, size_t bytesRead) {
 	addLeftover(rawBuff, rawBuffSize);
 
 	_request._stream = rawBuff;
-	// std::string head = rawBuff;
-	// size_t bodyStart = 0;
-
-	// if (_status == READING_HEADERS) {
-	// 	size_t end = head.find("\r\n\r\n");
-	// 	if (end == std::string::npos) {
-	// 		_request._stream = head;
-	// 		return;
-	// 	}
-	// 	bodyStart = end + 4;
-	// }
-	// _request._stream = head.substr(0, bodyStart);
 }
 
 bool Http::methodGetCase() {
@@ -78,33 +52,36 @@ bool Http::methodGetCase() {
 	return true;
 }
 
-void Http::HttpRoutine(char *buff, size_t bytesRead) {
+Response Http::HttpRoutine(char *buff, size_t bytesRead) {
 	switch(_status) {
 		case READING_HEADERS: {
 			handleBuffer(buff, bytesRead);
 			if (_request.parseRequestHead()) {
 				_status = READING_BODY;
-				if (methodGetCase() && _request.parseRequestBody())
+				if (methodGetCase() && _request.parseRequestBody()) {
 					_status = PROCESSING;
+					goto processing;
+				}
 			}
 			break;
 		}
 		case READING_BODY: {
 			handleBuffer(buff, bytesRead);
-			if (_request.parseRequestBody())
+			if (_request.parseRequestBody()) {
 				_status = PROCESSING;
+				goto processing:
+			}
 			break;
 		}
 		case PROCESSING: {
-			//Alba
-			break;
+		processing:	
+			processorRoutine();
+			_status = WRITING_RESPONSE;
 		}
 		case WRITING_RESPONSE: {
-			break;
-		}
-		case FINISHED: {
-			// Segurament no fa falta.
-			break;
+			prepareReponse();
+			_status = FINISHED;
+			return _response;
 		}
 	}	
 }
@@ -120,6 +97,10 @@ const Request &Http::getRequest() const {
 
 Request &Http::getRequest() {
 	return _request;
+}
+
+Response Http::getResponse() {
+	return _response;
 }
 ////////////////////////
 // Revisa si inicialitzes correctament la request i la response. 

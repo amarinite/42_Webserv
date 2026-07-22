@@ -15,32 +15,33 @@ enum State {
 
 class Http {
 	private:
-		// Config goes here.
-		std::string	_rawBuff;
-		size_t		_rawBuffSize;
+		std::string		_rawBuff;
+		size_t			_rawBuffSize;
 		
-		State		_status;
-		Request		_request;
-		// Response	_response;
+		State			_status;
+		Request			_request;
+		Processor		_processor;
+		Response		_response;
 		
+		ServerConfig	_sConfig;
+
 		//Functs
 		void addLeftover(std::string &rawBuff, size_t &rawBuffSize);
 		void handleBuffer(char *buff, size_t bytesRead);
 		bool methodGetCase();
 
 	public:
-		Http();
+		Http(ServerConfig	&sc);
 		// Http(const HandleSocket &socket);
-		Http(const Http &other);
-		Http &operator=(const Http &other);
-		~Http();
+		// ~Http();
 
 		//Functs
-		void HttpRoutine(char *buff, size_t bytesRead);
+		void 			HttpRoutine(char *buff, size_t bytesRead);
 		
 		//Getters
-		State getStatus() const;
-		const Request &getRequest() const;
-		Request &getRequest();
+		State 			getStatus() const;
+		const Request	&getRequest() const;
+		Request			&getRequest();
+		Response		getResponse();
 };
 

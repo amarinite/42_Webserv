@@ -46,5 +46,4 @@ class LocationConfig
 		const std::map<std::string, std::string>&	getCgiExtension() const;
 		const std::string&							getRoot() const;
 		const std::vector<std::string>&				getIndex() const;
-		
 };
