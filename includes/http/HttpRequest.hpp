@@ -87,6 +87,7 @@ class Request {
 		std::string	getBody();
 		std::string getConnection() const;
 		std::map<std::string, std::string>  getHeaders();
+		std::string getPath();
 
 		// // Testing only
 		// void feedStream(const std::string &data) {

@@ -377,3 +377,7 @@ std::map<std::string, std::string>  Request::getHeaders() {
 std::string	Request::getBody() {
 	return this->_body;
 }
+
+std::string Request::getPath() {
+	return this->_uri.path;
+}
