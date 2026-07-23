@@ -1,11 +1,16 @@
 #pragma once
 
+#include "Http.hpp"
+#include "FileUtils.hpp"
 #include <exception>
 #include <string>
+#include <cstdio>
+
+extern bool exceptConnection;
 
 class HttpException : public std::exception {
 private:
-    int _statusCode;
+    int         _statusCode;
     std::string _message;
 
 public:
@@ -19,4 +24,6 @@ public:
     int getStatusCode() const {
         return _statusCode;
     }
+
+    Response    prepareErrorResponse();
 };

@@ -27,21 +27,21 @@ Processor::Processor(Request &req, LocationConfig &lc)
  * @param path New directory extracted from the HTTP request.
  * @returns std::stirng with concatenated paths.
  */
-static std::string concatPaths(std::string &root, std::string &path) {
-	if (!root.empty() && root[root.length() - 1] != '/' && (path.empty()
-		|| path[0] != '/')) {
-		return  root + "/" + path;
-	}
-	return root + path;
-}
+static std::string concatPaths(const std::string &root, const std::string &path) {
+	if (root.empty()) 
+        return path;
+    if (path.empty()) 
+        return root;
 
-/**
- * @brief Returns the full path variable saved in the object.
- * 
- * @return std::string The fullPath variable.
- */
-std::string Processor::getFullPath() {
-	return _fullPath;
+	bool rootHasSlash = (root[root.length - 1] == '/');
+	bool pathHasSlash = (path[0] == '/');
+
+	if (!rootHasSlash && !pathHasSlash)
+		return root + "/" + path;
+	
+	if (rootHasSlash && pathHasSlash)
+		return root + path.substr(1);
+	return root + path;
 }
 
 // For GET
@@ -73,24 +73,24 @@ void Processor::convertFileExtension(const std::string &ext) {
 }
 
 // For POST
-void Processor::handleMultipart(std::string &content) {
-	size_t pos = content.find("boundary")
-	if (pos == content.end())
-		throw HttpException(400, "Bad Request: Bad Header");
-	std::string boundary = "--" + content.substr(10);
-}
+// void Processor::handleMultipart(std::string &content) {
+// 	size_t pos = content.find("boundary")
+// 	if (pos == content.end())
+// 		throw HttpException(400, "Bad Request: Bad Header");
+// 	std::string boundary = "--" + content.substr(10);
+// }
 
-void Processor::handleContentType() {
-	std::map<std::string, std::string>::iterator it = _req._headers.find("content-type");
-	if (it == _req._headers.end())
-		throw HttpException(400, "Bad Request: Missing Content-Type header");
-	if (it->second.find("multipart/form-data"))
-		handleMultipart(it->second);
-	else if (it->second.find("application/x-www-form-urlencoded"))
-		handleXForm(it->second);
-	else if (it->second.find("text/plain") || it->second.find("application/octet-stream"))
-		handlePlainTxt(it->second);
-}
+// void Processor::handleContentType() {
+// 	std::map<std::string, std::string>::iterator it = _req._headers.find("content-type");
+// 	if (it == _req._headers.end())
+// 		throw HttpException(400, "Bad Request: Missing Content-Type header");
+// 	if (it->second.find("multipart/form-data"))
+// 		handleMultipart(it->second);
+// 	else if (it->second.find("application/x-www-form-urlencoded"))
+// 		handleXForm(it->second);
+// 	else if (it->second.find("text/plain") || it->second.find("application/octet-stream"))
+// 		handlePlainTxt(it->second);
+// }
 
 /**
  * @brief Creates a file and fill it with the body parsed in the Http Request.
@@ -109,19 +109,22 @@ void Processor::createFile() {
 /**
  * @brief checks for multiple index pages and returns de first that exists.
  * 
- * @return true If finds a correct file.
- * @return false  if it doesnt find a correct file.
+ * @return true If a valid index file is found.
+ * @return false If no configured index exists or is inaccesible.
  */
 bool Processor::findIndexPage() {
-	std::vector<std::string>::iterator it = _lc.getIndex().begin();
-	for (; it != _lc.getIndex().end(); ++it) {
-		std::string potentialIdx = fullPath(_lc.getRoot(), it);
+	const std::vector<std::string> &indexes = _lc.getIndex();
+	std::vector<std::string>::const_iterator it = indexes.begin()
+	for (; it != indexes.end(); ++it) {
+		std::string potentialIdx = concatPaths(_fullPath, *it);
 		try {
 			if (validateFile(potentialIdx)) {
 				_fullPath = potentialIdx;
 				return true;
 			}
-		} catch (...) {}
+		} catch (const HttpException &e) {
+			continue;
+		}
 	}
 	return false;
 }
@@ -165,54 +168,64 @@ void Processor::doAutoIndex() {
 
 	struct dirent *content;
 	while ((content = readdir(folder)) != NULL)
-		html << "<li><a>" << content->d_name << "</a></li>\n";
+		html << "<li>" << content->d_name << "</li>\n";
+	
+	closedir(folder);
+
 	html << "</ul>\n<hr>\n</body>\n</html>";
 
 	_responseBody = html.str();
-	closedir(folder);
+	
 }
 
 /**
  * @brief Unifies de functions of GET method and sets the Status code and message.
  */
 void Processor::handleGet() {
-	std::string pathType = validatePathDir();
-	switch (pathType) {
-		case FILE:
+	bool isDir = validatePathDir();
+
+	if (!isDir) {
 			_extension = findFileExtension(_fullpath);
-			extractBodyFromFile();
-		case PATH:
-			if (!findIndexPage())
-				doAutoIndex();
+			_responseBody = readFile(_fullpath);
+	}
+	else {
+		if (findIndexPage()) {
+			_extension = findFileExtension(_fullpath);
+			_responseBody = readFile(_fullpath);
+		} else
+			doAutoIndex();
+		}
 	}
 	_code = 200;
 	_codeMsg = "Ok";
 }
 
-/**
- * @brief Unifies de functions of POST method and sets the Status code and message.
- */
-void Processor::handlePost() {
-	validateDirectory();
-	createFile();
-	_code = 201;
-	_codeMsg = "Created";
-}
+// /**
+//  * @brief Unifies de functions of POST method and sets the Status code and message.
+//  */
+// void Processor::handlePost() {
+// 	validateDirectory();
+// 	createFile();
+// 	_code = 201;
+// 	_codeMsg = "Created";
+// }
 
 /**
  * @brief Unifies de functions of DELETE method and sets the Status code and message.
  */
 void Processor::handleDelete() {
-	validateFile();
-	removeFile(_fullpath);
+	validateFile(_fullPath);
+	removeFile(_fullPath);
 	_code = 204;
 	_codeMsg = "No Content";
+	_responseBody.clear();
 }
 
 bool Processor::isValidMethod() {
-	std::vector<std::string>::iterator it = _lc.getAllowedMethods().begin();
-	for (; it != _lc.getAllowedMethods().end(); ++it) {
-		if (*it == _request._method)
+	const std::vector<std::string> &methods = _lc.getAllowedMethods();
+	std::vector<std::string>::iterator it = methods.begin();
+	for (; it != methods.end(); ++it) {
+		if (*it == _req.getMethod())
 			return true;
 	}
 	return false;
@@ -225,17 +238,59 @@ bool Processor::isValidMethod() {
  * @param method Method extracted in the Parse of the Http Request. 
  */
 void Processor::processorRoutine() {
-	_fullpath = concatPaths(_lc.getRoot(), _req.getPath());
+	_fullPath = concatPaths(_lc.getRoot(), _req.getPath());
 	if (!isValidMethod())
 		throw HttpException(405, "Method Not Allowed");
 	// Redirect
 	// CGI
-	switch(method) {
-		case GET:
-			handleGet();
-		case POST:
-			handlePost();
-		case DELETE:
-			handleDelete();
-	}
+	if (_req.getMethod() == "GET")
+		handleGet();
+	else if (_req.getMethod() ==  "POST")
+		handlePost();
+	else if (_req.getMethod() ==  "DELETE")
+		handleDelete();
+	else
+       	throw HttpException(501, "Not Implemented");
+}
+
+void Processor::prepareResponse() {
+	_responseBody = _response._responseBody;
+	_response.assignHeaders(_extension, _request.getConnection());
+}
+
+// Getters.
+/**
+ * @brief Getter to full path variable saved in the object.
+ * 
+ * @return std::string The fullPath variable.
+ */
+std::string Processor::getFullPath() {
+	return _fullPath;
+}
+
+/**
+ * @brief Getter to the extension variable saved in the object.
+ * 
+ * @return std::string The Extension variable.
+ */
+std::string Processor::getExtension() {
+	return _extension;
+}
+
+/**
+ * @brief Getter to the body variable saved in the object.
+ * 
+ * @return std::string The Response Body variable.
+ */
+std::string Processor::getResponseBody() {
+	return _responseBody;
+}
+
+/**
+ * @brief Getter to the status code variable saved in the object.
+ * 
+ * @return std::string The Status Code variable.
+ */
+std::string Processor::getStatusCode() {
+	return _code;
 }

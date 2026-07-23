@@ -24,6 +24,7 @@ class Http {
 		Response		_response;
 		
 		ServerConfig	_sConfig;
+		// IP!!!!!!!!!!!!!!!!!!!
 
 		//Functs
 		void addLeftover(std::string &rawBuff, size_t &rawBuffSize);

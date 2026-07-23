@@ -20,21 +20,21 @@ std::string readFile(const std::string& path)
  *			if it has the according access rights.
  * 
  * @param path the full path to analyze.
- * @return std::string indicating if it refers to a path or a file.
+ * @return true if it is a directory, false if it is a regular file.
  */
-std::string validatePathDir(const std::string &path) {
+bool validatePathDir(const std::string &path) {
 	struct stat buff;
 	if (stat(path.c_str(), &buff) != 0)
 		throw HttpException(404, "Not Found.");
 	if (S_ISDIR(buff.st_mode)) {
-		if (!(buff.st_mode & S_IRUSR))
+		if (access(path.c_str(), R_OK | X_OK) != 0)
 			throw HttpException(403, "Forbidden.");
-		return "DIR";
+		return true; // Is dir.
 	}
 	else if (S_ISREG(buff.st_mode)) {
-		if (!(buff.st_mode & S_IRUSR))
+		if (access(path.c_str(), R_OK) != 0)
 			throw HttpException(403, "Forbidden.");
-		return "FILE";
+		return false; // Is file.
 	}
 	throw HttpException(403, "Forbidden.");
 }
@@ -51,7 +51,9 @@ bool validateFile(const std::string &path) {
 	struct stat buff;
 	if (stat(path.c_str(), &buff) != 0)
 		throw HttpException(404, "Not Found.");
-	if (!(buffer.st_mode & S_IRUSR))
+	if (!S_ISREG(buff.st_mode))
+        throw HttpException(403, "Forbidden: Target is not a regular file.");
+	if (access(path.c_str(), R_OK) != 0)
 		throw HttpException(403, "Forbidden.");
 	return true;
 }
@@ -82,12 +84,13 @@ bool validateDir(const std::string &dir) {
  * @throws HttpException 400 if the extension has a non contemplated length.
  */
 std::string findFileExtension(std::string &path) {
+	size_t lastSlash = path.rfind('/');
 	size_t dot = path.rfind('.');
-		return path.substr(dot);
-	if (dot == std::string::npos)
+	if (dot == std::string::npos || (lastSlash != std::string::npos && dot < lastSlash))
 		return "";
 	else if (dot == path.size() - 1)
 		throw HttpException(400, "Bad Request: missing extension.");
+	return path.substr(dot);
 }
 
 /**
@@ -97,7 +100,9 @@ std::string findFileExtension(std::string &path) {
  * @throws HttpException 500 if std::remove() fails.
  */
 void removeFile(std::string &path) {
-	bool rm = std::remove(path);
-	if (rm != 0)
+	if (access(_fullPath.c_str(), W_OK) != 0) {
+        throw HttpException(403, "Forbidden: No write permissions to delete file.");
+    }
+	if (std::remove(path.c_str()) != 0)
 		throw HttpException(500, "Internal Server Error: Couldnt remove file.");
 }

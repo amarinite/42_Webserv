@@ -28,8 +28,8 @@ class Processor {
 		std::string		_code;
 		std::string		_codeMsg;
 
-		LocationConfig	_lc;
-		Request			_req;
+		LocationConfig	&_lc;
+		Request			&_req;		
 
 		// Functs.
 		void convertFileExtension(const std::string &ext);
@@ -50,4 +50,7 @@ class Processor {
 
 		// Getters.
 		std::string getFullPath();
+		std::string getExtension();
+		std::string getResponseBody();
+		std::string getStatusCode();
 };

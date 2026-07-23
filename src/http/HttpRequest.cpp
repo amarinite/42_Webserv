@@ -194,12 +194,28 @@ void Request::checkInvalidHeaders() {
 
 }
 
+static void setGlobalConnexion(std::map<std::string, std::string> &headers) {
+	std::map<std::string, std::string>::iterator it = headers.begin();
+	for (; it != headers.end(); ++it) {
+		if (*it == "connexion") {
+			if (it->second == "close") {
+				exceptConnection = false;
+				return;
+			} else if (it->second == "keep-alive") {
+				break;
+			} else
+				throw HttpException(400, "Bad Request: Invalid Header.");
+	}
+	exceptConnection = true;
+} 
+
 bool Request::parseRequestHead() {
 	if (!parseMethod())
 		return false;
 	if (!parseHeaders())
 		return false;
 	checkInvalidHeaders();
+	setGlobalConnexion(_headers);
 			
 	return true;
 }
