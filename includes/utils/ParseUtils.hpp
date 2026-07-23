@@ -25,3 +25,13 @@ int			parseNumber(const std::string& str);
 ListenAddr	parseListenArg(const std::string& arg);
 bool		isHttpCodeValid(int code);
 std::string	parseFsPath(const std::string& arg);
+
+template <typename T>
+std::string numberToString(T value)
+{
+	std::stringstream ss;
+	ss << value;
+	if (ss.fail())
+		throw std::invalid_argument("Failed to convert number to string");
+	return ss.str();
+}

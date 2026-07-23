@@ -93,7 +93,7 @@ void LocationConfig::setCgiExtension(const Node* n)
 
 void LocationConfig::setRoot(const Node* n)
 {
-	_root = n->args[0];
+	_root = parseFsPath(n->args[0]);
 }
 
 void LocationConfig::setIndex(const Node* n)

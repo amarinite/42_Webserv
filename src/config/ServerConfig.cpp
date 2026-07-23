@@ -45,12 +45,12 @@ ServerConfig ServerConfig::build(Node* serverRoot)
 	return config;
 }
 
-void ServerConfig::setListen(const Node* n)
+void ServerConfig::setListenVector(const Node* n)
 {
 	for (size_t i = 0; i < n->args.size(); i++)
 	{
 		ListenAddr addr = parseListenArg(n->args[i]);
-		_listen.push_back(addr);
+		_listenVector.push_back(addr);
 	}
 }
 
@@ -69,7 +69,7 @@ void ServerConfig::setClientMaxBodySize(const Node* n)
 
 void ServerConfig::setRoot(const Node* n)
 {
-	_root = n->args[0];
+	_root = parseFsPath(n->args[0]);
 }
 
 void ServerConfig::setIndex(const Node* n)
@@ -79,9 +79,14 @@ void ServerConfig::setIndex(const Node* n)
 		_index.push_back(n->args[i]);
 }
 
-const std::vector<ListenAddr>& ServerConfig::getListen() const
+void ServerConfig::setListen(const ListenAddr addr)
 {
-	return _listen;
+	_listen = addr;
+}
+
+const std::vector<ListenAddr>& ServerConfig::getListenVector() const
+{
+	return _listenVector;
 }
 
 const std::map<int, std::string>& ServerConfig::getErrorPages() const
