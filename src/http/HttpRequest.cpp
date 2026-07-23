@@ -1,6 +1,6 @@
 #include "HttpRequest.hpp"
 
-Request::Request() : 
+Request::Request(int &clientMaxBodySize) : __client_max_body_size(clientMaxBodySize),
 	_methodParsed(false),
 	_uriParsed(false),
 	_httpVerParsed(false),
@@ -28,6 +28,15 @@ Request &Request::operator=(const Request &other) {
 Request::~Request() {}
 
 // Functs
+std::string Request::getConnection() const {
+	std:::map<std::string, std::string>::const_iterator it = _headers.find("connection");
+	if (it != _headers.end()) {
+		if (it->second == "close")
+			return "close";
+	}
+	return "keep-alive";
+}
+
 static void tolowerStr(std::string &str) {
 	for (size_t i = 0; i < str.size(); ++i) {
 		unsigned char c = static_cast<char>(str[i]);
@@ -66,7 +75,7 @@ bool Request::parseMethod() {
 		if (!this->_methodParsed)
 			return false;
 		if (_method != "GET" && _method != "POST" && _method != "DELETE") // To be redone by server restrictions.
-			throw HttpException(400, "Bad Request: Invalid Method");
+			throw HttpException(405, "Method Not Allowed");
 	}
 
 	if (!this->_uriParsed) {
@@ -245,6 +254,8 @@ void Request::setBodyType() {
 	else if (hasContentLength) {
 		_bodyType = FULL;
 		_maxBodySize = strToSize_t(_headers.find("content-length")->second.c_str(), 10);
+		if (_maxBodySize > _client_max_body_size)
+			throw HttpException(413, "Payload Too Large.");
 	} else if (hasTransferEncoding) 
 		_bodyType = CHUNKED;
 }
@@ -272,20 +283,21 @@ bool Request::fullBody() {
 }
 
 bool Request::chunkedBody() {
-	
 	const std::string delimiter = "\r\n";
 	while (true) {
 		if (!_leftoverBody.empty()) {
 		_stream = _leftoverBody + _stream;
 		_leftoverBody.clear();
 		}
-		size_t pos = _stream.find(delimiter);
+		size_t pos = _stream.find(delimiter)
 		if (pos == std::string::npos) {
 			_leftoverBody = _stream;
 			_stream.clear();
 			return false;
 		}
-
+		_chunkTotal += pos;
+		if (_chunkTotal > _client_max_body_size)
+			throw HttpException(413, "Payload Too Large.");
 		if (!_chunkSize) {
 			std::string sizeStr = _stream.substr(0, pos);
 

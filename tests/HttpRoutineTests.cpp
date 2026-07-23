@@ -285,23 +285,6 @@ static bool testFragmentedHeaderParsing()
 	return true;
 }
 
-
-// We wait for the Routine and socket to be done to test that.
-// static bool testFragmentedBodyParsing()
-// {
-// 	Http h;
-// 	feed(h, "POST /submit HTTP/1.1\r\nHost: localhost\r\nContent-Length: 10\r\n\r\n");
-// 	ASSERT(h.getStatus() == READING_BODY);
-
-// 	feed(h, "Hello");
-// 	ASSERT(h.getStatus() == READING_BODY);
-
-// 	feed(h, " World");
-// 	ASSERT(h.getStatus() == PROCESSING);
-// 	ASSERT(h.getRequest().getBody() == "Hello World");
-// 	return true;
-// }
-
 static bool testChunkedFragmentedPayload()
 {
 	Http h;
@@ -404,7 +387,6 @@ void runHttpRequestTests(int& passed, int& failed)
 		{ "Test 24: GET method with body throws 400",          testGetMethodWithBodyThrows },
 		{ "Test 25: Space in header key throws 400",           testSpaceInHeaderKeyThrows },
 		{ "Test 26: Fragmented header parsing",                testFragmentedHeaderParsing },
-		// { "Test 27: Fragmented body parsing",                  testFragmentedBodyParsing },
 		{ "Test 28: Chunked fragmented payload",               testChunkedFragmentedPayload },
 		{ "Test 29: Invalid delimiter in request line (\\n)",  testInvalidDelimiterInRequestLineThrows },
 		{ "Test 30: Invalid line ending in headers",           testInvalidLineEndingInHeaderThrows },

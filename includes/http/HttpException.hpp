@@ -3,20 +3,17 @@
 #include <exception>
 #include <string>
 
-class HttpException : public std::exception {
+class HttpException : public std::runtime_error {
 private:
-    int _statusCode;
-    std::string _message;
+	int			_statusCode;
 
 public:
-    HttpException(int code, const std::string& msg) : _statusCode(code), _message(msg) {}
-    virtual ~HttpException() throw() {}
+	HttpException(int code, const std::string& msg) : _statusCode(code), std::runtime_error(msg) {}
+	virtual ~HttpException() throw() {}
 
-    virtual const char* what() const throw() {
-        return _message.c_str();
-    }
+	virtual ~HttpException() throw() {}
 
-    int getStatusCode() const {
-        return _statusCode;
-    }
+	int getStatusCode() const {
+		return _statusCode;
+	}
 };

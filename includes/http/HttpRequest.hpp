@@ -12,7 +12,7 @@ enum BodyType {
 	EMPTY,
 	FULL,
 	CHUNKED,
-	OTHER
+	NO_BODY
 };
 
 class Request {
@@ -39,7 +39,9 @@ class Request {
 		// Body Parse
 		BodyType	_bodyType;
 		size_t		_maxBodySize;
+		int			_client_max_body_size;
 		bool		_chunkSize;
+		size_t		_chunkTotal;
 
 		//Functs
 		// Head
@@ -58,16 +60,20 @@ class Request {
 		void setBodyType();
 		
 	public:
-		std::string _leftover;
+		// Request Line
 		std::string	_stream;
 		std::string _method;
 		t_uri		_uri;
+
+		// Headers
 		std::map<std::string, std::string>  _headers;
-		
-		//Body
+
+		// Body
 		std::string	_body;
 
-		Request();
+		std::string _leftover;
+
+		Request(int &clientMaxBodySize);
 		Request(const Request &other);
 		Request &operator=(const Request &other);
 		~Request();
@@ -78,8 +84,9 @@ class Request {
 		
 		// Getters
 		std::string	getMethod();
-		std::map<std::string, std::string>  getHeaders();
 		std::string	getBody();
+		std::string getConnection() const;
+		std::map<std::string, std::string>  getHeaders();
 
 		// // Testing only
 		// void feedStream(const std::string &data) {

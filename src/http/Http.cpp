@@ -1,6 +1,14 @@
 #include "Http.hpp"
 
-Http::Http() : _rawBuff(""),
+Http::Http(ServerConfig &sc) : _rawBuff(""),
+	_rawBuffSize(0),
+	_status(READING_HEADERS),
+	_request(sc.getClientMaxBodySize();),
+	_config(sc)
+{}
+
+Http::Http(const ServerConfig &conf) : _config(conf), 
+	_rawBuff(""),
 	_rawBuffSize(0),
 	_status(READING_HEADERS),
 	_request()
@@ -73,6 +81,7 @@ la_funct_del_isaac() {
 	size_t bytesRead = recv(something, &buffer, something);
 	try {
 		Request.httpRoutine(buffer, bytesRead);
+		buildResponse()
 	} catch (const HttpException& e) {
 		Request._status = WRITING_RESPONSE;
 		buildResponse();
