@@ -1,37 +1,15 @@
 #include "Http.hpp"
 
-Http::Http(ServerConfig &sc) : _rawBuff(""),
+Http::Http(ServerConfig	&sc) : _rawBuff(""),
 	_rawBuffSize(0),
 	_status(READING_HEADERS),
-	_request(sc.getClientMaxBodySize();),
-	_config(sc)
-{}
-
-Http::Http(const ServerConfig &conf) : _config(conf), 
-	_rawBuff(""),
-	_rawBuffSize(0),
-	_status(READING_HEADERS),
-	_request()
-{}
-
-// Http::Http(const HandleSocket &socket) : _status(READING_HEADERS), _socket(socket) {}
-
-Http::Http(const Http &other) {
-	*this = other;
+	_request(),
+	_response(),
+	_sConfig(sc) {
+		_processor(_request, _sConfig.getLocationConfig(_request._uri));
 }
 
-Http &Http::operator=(const Http &other) {
-	if (this != &other) {
-		_rawBuff = other._rawBuff;
-		_rawBuffSize = other._rawBuffSize;
-		_status = other._status;
-		_request = other._request;
-		// _response = other._response;
-	}
-	return *this;
-}
-
-Http::~Http() {}
+// Http::~Http() {}
 
 //Functs
 void Http::addLeftover(std::string &rawBuff, size_t &rawBufferSize) {
@@ -74,47 +52,50 @@ bool Http::methodGetCase() {
 }
 
 
-la_funct_del_isaac() {
-	// Deberia ser algo asi:
-	Http Request; 
-	char buffer[cantidad];
-	size_t bytesRead = recv(something, &buffer, something);
-	try {
-		Request.httpRoutine(buffer, bytesRead);
-		buildResponse()
-	} catch (const HttpException& e) {
-		Request._status = WRITING_RESPONSE;
-		buildResponse();
-	}
-}
+// la_funct_del_isaac() {
+// 	// Deberia ser algo asi:
+// 	Http Request; 
+// 	char buffer[cantidad];
+// 	size_t bytesRead = recv(something, &buffer, something);
+// 	try {
+// 		Request.httpRoutine(buffer, bytesRead);
+// 		buildResponse()
+// 	} catch (const HttpException& e) {
+// 		Request._status = WRITING_RESPONSE;
+// 		buildResponse();
+// 	}
+// }
 
-void Http::HttpRoutine(char *buff, size_t bytesRead) {
+Response Http::HttpRoutine(char *buff, size_t bytesRead) {
 	switch(_status) {
 		case READING_HEADERS: {
 			handleBuffer(buff, bytesRead);
 			if (_request.parseRequestHead()) {
 				_status = READING_BODY;
-				if (methodGetCase() && _request.parseRequestBody())
+				if (methodGetCase() && _request.parseRequestBody()) {
 					_status = PROCESSING;
+					goto processing;
+				}
 			}
 			break;
 		}
 		case READING_BODY: {
 			handleBuffer(buff, bytesRead);
-			if (_request.parseRequestBody())
+			if (_request.parseRequestBody()) {
 				_status = PROCESSING;
+				goto processing:
+			}
 			break;
 		}
 		case PROCESSING: {
-			//Alba
-			break;
+		processing:	
+			processorRoutine();
+			_status = WRITING_RESPONSE;
 		}
 		case WRITING_RESPONSE: {
-			break;
-		}
-		case FINISHED: {
-			// Segurament no fa falta.
-			break;
+			prepareReponse();
+			_status = FINISHED;
+			return _response;
 		}
 	}
 }
@@ -138,6 +119,10 @@ const Request &Http::getRequest() const {
 
 Request &Http::getRequest() {
 	return _request;
+}
+
+Response Http::getResponse() {
+	return _response;
 }
 ////////////////////////
 // Revisa si inicialitzes correctament la request i la response. 

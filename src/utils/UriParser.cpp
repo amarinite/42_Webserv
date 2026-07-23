@@ -113,7 +113,7 @@ static int vectorizePath(t_uri &uri, std::vector<std::string> &route) {
 	while (std::getline(ss, segment, '/')) {
 		if (segment.empty() || !segment.empty()) {
 			if (segment == ".")
-                continue;
+				continue;
 			if (segment == "..") {
 				if (!route.empty()) {
 					route.pop_back();
@@ -130,17 +130,17 @@ static int vectorizePath(t_uri &uri, std::vector<std::string> &route) {
 
 static void rebuildPath(t_uri &uri, const std::vector<std::string> &route) {
 	if (route.empty()) {
-        uri.path = "/";
-        return;
-    }
+		uri.path = "/";
+		return;
+	}
 
 	std::string new_path = "";
-    for (size_t i = 0; i < route.size(); ++i) {
+	for (size_t i = 0; i < route.size(); ++i) {
 		if (route[i].empty())
 			++i;
 		new_path += "/" + route[i];
-    }
-    uri.path = new_path;
+	}
+	uri.path = new_path;
 }
 
 static int pathCheck(t_uri &uri) {
@@ -203,15 +203,9 @@ static int detectPath(t_uri &uri, std::string req) {
 
 static int isDirectPath(t_uri &uri, std::string req) {
 	if (req.find("://") != std::string::npos) {
-        return 0;
-    }
-	
-	// if (req[0] == '/' && req.size() == 1) {
-	// 	uri.scheme = '/';
-	// 	return 0;
-	// }
-	// return 1;
-	//FIX
+		return 0;
+	}
+
 	(void)uri;
 	if (!req.empty() && req[0] == '/') {
 		return 1; 
@@ -251,11 +245,11 @@ static int detectDelimiters(t_uri &uri, std::string req) {
 
 static void init_struct(t_uri &uri) {
 	uri.has_scheme = false;
-    uri.has_auth = false;
-    uri.has_path = false;
-    uri.has_query = false;
-    uri.has_frag = false;
-    uri.auth_port = 0;
+	uri.has_auth = false;
+	uri.has_path = false;
+	uri.has_query = false;
+	uri.has_frag = false;
+	uri.auth_port = 0;
 }
 
 void	parseUri(t_uri &uri, std::string req) {
@@ -301,4 +295,24 @@ void	parseUri(t_uri &uri, std::string req) {
 		uri.fragment = req;
 		req.clear();
 	}
+}
+
+std::string toString(const t_uri& uri) {
+	std::string fullUri;
+
+	if (!uri.scheme.empty())
+		fullUri += uri.scheme + ":";
+
+	if (!uri.authority.empty())
+		fullUri += "//" + uri.authority;
+
+	fullUri += uri.path;
+
+	if (!uri.query.empty())
+		fullUri += "?" + uri.query;
+
+	if (!uri.fragment.empty())
+		fullUri += "#" + uri.fragment;
+
+	return fullUri;
 }

@@ -35,8 +35,8 @@ struct t_uri {
 			has_path(false), path(),
 			has_query(false), query(),
 			has_frag(false), fragment()
-	{}
-	
+	{}	
 };
 
-void	parseUri(t_uri &uri, std::string req);
+void			parseUri(t_uri &uri, std::string req);
+std::string		toString(t_uri &uri);
