@@ -1,15 +1,4 @@
 #include "Processor.hpp"
-
-// /**
-//  * @brief Construct a new empty Processor:: Processor object
-//  */
-// // Processor::Processor() {}
-
-
-// Processor::Processor(const Processor &p) {
-// 	this = &p;
-// }
-
 /**
  * @brief Construct a new Processor:: Processor object
  * 
@@ -43,24 +32,6 @@ static std::string concatPaths(const std::string &root, const std::string &path)
 		return root + path.substr(1);
 	return root + path;
 }
-
-// For GET
-
-// /**
-//  * @brief Gets the response Body from the requested file.
-//  * 
-//  * @note Relies on the internal target path storage (_fullpath).
-//  * @return std::string The binary or text contents of the requested file.
-//  * @throws HttpException 404 if the file cannot be opened.
-//  */
-// void Processor::extractBodyFromFile() {
-// 	std::ifstream file(_fullpath.c_str(), std::ios::binary);
-// 	if (!file)
-// 		throw HttpException(404, "Not Found.");
-// 	std::ostringstream ss;
-// 	ss << file.rdbuf();
-// 	_responseBody = s ss.str();
-// }
 
 /**
  * @brief Checks if the extension is valid.
