@@ -43,9 +43,10 @@ class Request {
 		bool		_chunkSize;
 		size_t		_chunkTotal;
 
-		//Functs
-		// Head
+		// Extra
+		std::vector<std::string>&	allowedMethods;
 
+		//Functs
 		void checkInvalidHeaders();
 		bool parseHeaders();
 		void addHeader();

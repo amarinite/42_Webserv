@@ -1,21 +1,30 @@
 #include "HttpResponse.hpp"
 
 Response::Response() {
-	_mimeMap();
+	_mimeMap;
 }
 
-void Response::assignHead(const HttpException& e) {
-	_statusCode = e.getStatusCode();
-	_message = e.getMessage();
+// void Response::assignHead(const HttpException& e) {
+// 	_statusCode = e.getStatusCode();
+// 	_message = e.getMessage();
+// }
+
+template <typename T>
+std::string toStr(const T &num) {
+	std::ostringstream oss;
+	oss << num;
+	return oss.str();
 }
 
 std::string Response::getTime() {
 	char buff[100];
-	std:::time_t whatTimeIsIt = std::time(NULL);
-	std::tm	*summerTime;
-	if (std::strftime(buff, sizeof(buff), "%a, %d %b %Y %H:%M:%S GMT", summerTime))
+	std::time_t now = std::time(NULL);
+	std::tm	*gmt = std::gmtime(&now);
+	if (gmt == NULL)
+		throw HttpException(500, "Internal Server Error.");
+	if (std::strftime(buff, sizeof(buff), "%a, %d %b %Y %H:%M:%S GMT", gmt))
 		return std::string(buff);
-	return "Not available";
+	throw HttpException(500, "Internal Server Error.");
 }
 
 void Response::assignHeaders(std::string &extension, std::string &connection) {
@@ -24,12 +33,16 @@ void Response::assignHeaders(std::string &extension, std::string &connection) {
 	_headers["Connection: "] = connection;
 	if (!_responseBody.empty()) {
 		_headers["Content-Type: "] = _mimeMap.getType(extension);
-		_headers["Content-Length: "] = _responseBody.size();
+		_headers["Content-Length: "] = toString(_responseBody.size());
 	}
 }
 
-std::string errorBody(size_t &statusCode, std::string &errorDir) {
-	std::string errPage = errorDir + statusCode + ".html";
+void Response::errorBody(const std::string &statusCode, std::string &errorDir) {
+	std::string errPage = errorDir;
+	if (!errPage.empty() && errPage[errPage.size() - 1] != '/') {
+		errPage += "/";
+	}
+	errPage += statusCode + ".html";
 	try {
 		_responseBody = readFile(errPage);
 	} catch (...) {
@@ -39,10 +52,10 @@ std::string errorBody(size_t &statusCode, std::string &errorDir) {
 	}
 }
 
-///////////////Hem d'entrar a response amb el body definitiu ja guardat a la classe.
-void Response::assignBody() {
-	if (_statusCode > 399)
-		_responseBody = errorBody(_statusCode);
+void Response::assignErrorBody(size_t &statusCode, const std::map<int, std::string> &error_pages) {
+	if (statusCode > 399) {
+		_responseBody = errorBody(toStr(statusCode), error_pages[statusCode]);
+	}
 }
 
 void Response::buildRawResponse() {
@@ -50,37 +63,55 @@ void Response::buildRawResponse() {
 	oss << "HTTP/1.1 " << _statusCode << " " << _message << "\r\n";
 	std::map<std::string, std::string>::iterator it = _headers.begin();
 	for (; it != _headers.end(); ++it) {
-		oss << it->first << ": " << it->second << "\r\n"
+		oss << it->first << ": " << it->second << "\r\n";
 	}
 	oss << "\r\n";
-	if (_responseBody)
+	if (!_responseBody.empty())
 		oss << _responseBody;	
 	std::string fullResponse = oss.str();
-	std::vector<char> buff(fullResponse.begin(), fullResponse.end());
-	_response = &buff[0];
-	_responseSize = buff.size();
+	_rawResponse.assign(fullResponse.begin(), fullResponse.end());
 }
 
 // Case 301 - Redirect
-void Response::setLocationHeader(std::string &location) {
-	_headers["Location: "] = location;
+void Response::setLocationHeader(const std::string &location) {
+	if (!location.empty())
+		_headers["Location: "] = location;
 }
 
-// Case 405 - Not allowed method.
-void Response::setAllowedMethodsHeader(std::vector<std::string> &allowed) {
-	std::ostringstream oss;
-	for (size_t i = 0; i < allowed.size(); ++i) {
-		if (i != 0)
-			oss << ", "
-		oss << allowed[i];
-	}
-	_headers["Allow: "] = oss.str();
+// // Case 405 - Not allowed method.
+void Response::setAllowedMethodsHeader(const std::string &allowed) {
+	_headers["AllowedMethods: "] = allowed;
 }
 
-// 400, 404, 405, 403, 500, 502 503, 504  
-// 301 200 204
 
-// Rutina Processor
-// Rutina Response
-// Assegurarse que el body esta complet abans de entra a construir la resposta. 
-// Doxygen?
+// void	Response::prepareErrorResponse(HttpException &exc, std::map<int, std::string> &error_pages) {
+// 	Response res();
+// 	std::string strStatusCode = intToString(exc.getStatusCode());
+
+// 	res.setStatusCode(strStatusCode);
+// 	res.setMessage(responseStatusMessage(strStatusCode));
+// 	std::string body = errorPageBody(exc.getStatusCode(), error_pages);
+// 	res.setResponseBody(body);
+// 	res.assignHeaders("text/html", setConnection(exc.getStatusCode()));
+// }
+
+// Setters.
+void Response::setStatusCode(const std::string &code) {
+	_statusCode = code;
+}
+
+void Response::setMessage(const std::string &msg) {
+	_message = msg;
+}
+
+void Response::setResponseBody(const std::string &body) {
+	_responseBody = body;
+}
+
+void Response::setConnection(const std::string &conn) {
+	_connection = conn;
+}
+
+std::string Response::getResponseBody() {
+	return _responseBody;
+}

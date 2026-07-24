@@ -100,9 +100,8 @@ std::string findFileExtension(std::string &path) {
  * @throws HttpException 500 if std::remove() fails.
  */
 void removeFile(std::string &path) {
-	if (access(_fullPath.c_str(), W_OK) != 0) {
+	if (access(path.c_str(), W_OK) != 0) {
         throw HttpException(403, "Forbidden: No write permissions to delete file.");
     }
 	if (std::remove(path.c_str()) != 0)
-		throw HttpException(500, "Internal Server Error: Couldnt remove file.");
-}
+}		throw HttpException(500, "Internal Server Error: Couldnt remove file.");

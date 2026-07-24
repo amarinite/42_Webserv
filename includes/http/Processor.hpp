@@ -29,7 +29,8 @@ class Processor {
 		std::string		_codeMsg;
 
 		LocationConfig	&_lc;
-		Request			&_req;		
+		Request			&_req;
+		Response		&_res;		
 
 		// Functs.
 		void convertFileExtension(const std::string &ext);

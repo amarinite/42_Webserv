@@ -59,14 +59,14 @@ bool Http::methodGetCase() {
 // 	size_t bytesRead = recv(something, &buffer, something);
 // 	try {
 // 		Request.httpRoutine(buffer, bytesRead);
-// 		buildResponse()
+// 		buildResponse();
 // 	} catch (const HttpException& e) {
 // 		Request._status = WRITING_RESPONSE;
 // 		buildResponse();
 // 	}
 // }
 
-Response Http::HttpRoutine(char *buff, size_t bytesRead) {
+void Http::HttpRoutine(char *buff, size_t bytesRead) {
 	switch(_status) {
 		case READING_HEADERS: {
 			handleBuffer(buff, bytesRead);
@@ -83,19 +83,18 @@ Response Http::HttpRoutine(char *buff, size_t bytesRead) {
 			handleBuffer(buff, bytesRead);
 			if (_request.parseRequestBody()) {
 				_status = PROCESSING;
-				goto processing:
+				goto processing;
 			}
 			break;
 		}
 		case PROCESSING: {
 		processing:	
-			processorRoutine();
-			_status = WRITING_RESPONSE;
+			_processor.processorRoutine();
+			_status = WRITING_RESPONSE;		
 		}
 		case WRITING_RESPONSE: {
-			prepareReponse();
+			_processor.prepareResponse();
 			_status = FINISHED;
-			return _response;
 		}
 	}
 }

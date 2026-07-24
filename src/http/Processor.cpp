@@ -18,11 +18,11 @@ Processor::Processor(Request &req, LocationConfig &lc)
  */
 static std::string concatPaths(const std::string &root, const std::string &path) {
 	if (root.empty()) 
-        return path;
-    if (path.empty()) 
-        return root;
+		return path;
+	if (path.empty()) 
+		return root;
 
-	bool rootHasSlash = (root[root.length - 1] == '/');
+	bool rootHasSlash = (root[root.length() - 1] == '/');
 	bool pathHasSlash = (path[0] == '/');
 
 	if (!rootHasSlash && !pathHasSlash)
@@ -85,7 +85,7 @@ void Processor::createFile() {
  */
 bool Processor::findIndexPage() {
 	const std::vector<std::string> &indexes = _lc.getIndex();
-	std::vector<std::string>::const_iterator it = indexes.begin()
+	std::vector<std::string>::const_iterator it = indexes.begin();
 	for (; it != indexes.end(); ++it) {
 		std::string potentialIdx = concatPaths(_fullPath, *it);
 		try {
@@ -105,9 +105,9 @@ bool Processor::findIndexPage() {
  * 
  * @return const std::string validated path.
  */
-const std::string Process::requestPath() {
+const std::string Processor::requestPath() {
 	validateDir(_req._uri.path);
-	return &_req._uri.path;
+	return _req._uri.path;
 }
 
 /**
@@ -165,7 +165,6 @@ void Processor::handleGet() {
 			_responseBody = readFile(_fullpath);
 		} else
 			doAutoIndex();
-		}
 	}
 	_code = 200;
 	_codeMsg = "Ok";
@@ -202,6 +201,16 @@ bool Processor::isValidMethod() {
 	return false;
 }
 
+static std::string findAllowedMethods(std::vector<std::string>& allowed) {
+	std::ostringstream oss;
+	for (size_t i = 0; i < allowed.size(); ++i) {
+		if (i != 0)
+			oss << ", ";
+		oss << allowed[i];
+	}
+	return oss.str();
+}
+
 // Routine
 /**
  * @brief Derives the processing of the request to a handler depending on the Method.
@@ -210,8 +219,9 @@ bool Processor::isValidMethod() {
  */
 void Processor::processorRoutine() {
 	_fullPath = concatPaths(_lc.getRoot(), _req.getPath());
-	if (!isValidMethod())
-		throw HttpException(405, "Method Not Allowed");
+	if (!isValidMethod()) {
+		throw HttpException(405, "Method Not Allowed", findAllowedMethods(getAllowedMethods()));
+	}
 	// Redirect
 	// CGI
 	if (_req.getMethod() == "GET")
@@ -221,12 +231,20 @@ void Processor::processorRoutine() {
 	else if (_req.getMethod() ==  "DELETE")
 		handleDelete();
 	else
-       	throw HttpException(501, "Not Implemented");
+	   	throw HttpException(501, "Not Implemented");
 }
 
+/**
+ * @brief assigns headers and builds Http Response.
+ * 
+ */
 void Processor::prepareResponse() {
-	_responseBody = _response._responseBody;
-	_response.assignHeaders(_extension, _request.getConnection());
+	if (!_res._responseBody.empty())
+		_res.setResponseBody(_responseBody);
+	_res.assignHeaders(_extension, _req.getConnection());
+	if (_statusCode == "301")
+		_res.setLocationHeader(_redirectPath);
+	_res.buildRawResponse();
 }
 
 // Getters.

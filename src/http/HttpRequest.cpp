@@ -29,7 +29,7 @@ Request::~Request() {}
 
 // Functs
 std::string Request::getConnection() const {
-	std:::map<std::string, std::string>::const_iterator it = _headers.find("connection");
+	std::map<std::string, std::string>::const iterator it = _headers.find("connection");
 	if (it != _headers.end()) {
 		if (it->second == "close")
 			return "close";
@@ -74,8 +74,6 @@ bool Request::parseMethod() {
 		safeGetLine(_stream, _method, ' ', this->_methodParsed);
 		if (!this->_methodParsed)
 			return false;
-		if (_method != "GET" && _method != "POST" && _method != "DELETE") // To be redone by server restrictions.
-			throw HttpException(405, "Method Not Allowed");
 	}
 
 	if (!this->_uriParsed) {
@@ -206,7 +204,7 @@ void Request::checkInvalidHeaders() {
 static void setGlobalConnexion(std::map<std::string, std::string> &headers) {
 	std::map<std::string, std::string>::iterator it = headers.begin();
 	for (; it != headers.end(); ++it) {
-		if (*it == "connexion") {
+		if (it->first == "connexion") {
 			if (it->second == "close") {
 				exceptConnection = false;
 				return;
@@ -214,6 +212,7 @@ static void setGlobalConnexion(std::map<std::string, std::string> &headers) {
 				break;
 			} else
 				throw HttpException(400, "Bad Request: Invalid Header.");
+		}
 	}
 	exceptConnection = true;
 } 
@@ -305,7 +304,7 @@ bool Request::chunkedBody() {
 		_stream = _leftoverBody + _stream;
 		_leftoverBody.clear();
 		}
-		size_t pos = _stream.find(delimiter)
+		size_t pos = _stream.find(delimiter);
 		if (pos == std::string::npos) {
 			_leftoverBody = _stream;
 			_stream.clear();

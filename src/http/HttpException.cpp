@@ -7,14 +7,9 @@ static std::string errorPageBody(const int errorCode, std::map<int, std::string>
 		if (*it == errorCode)
 			return readFile(it->second);
 	}
+	return "";
 }
 
-static std::string intToStr(int &num) {
-	char[4] buff;
-	sprintf(buff, "%d", num);
-	std::string str(buff);
-	return str;
-}
 static std::string setConnection(const int code) {
 	if (code == 400 || code == 413 || code > 499 || !exceptConnection)
 		return "close";
@@ -22,21 +17,22 @@ static std::string setConnection(const int code) {
 		return "keep-alive";
 }
 
-void	HttpException::prepareErrorResponse(Response &res, std::map<int, std::string> &error_pages) {
-	Response res();
-	std::string strStatusCode = intToString(getStatusCode());
+void	HttpException::prepareErrorResponse(Response &res, ServerConfig &conf) {
+	std::string strStatusCode = toStr(getStatusCode());
 
 	res.setStatusCode(strStatusCode);
 	res.setMessage(responseStatusMessage(strStatusCode));
-	std::string body = errorPageBody(getStatusCode(), error_pages);
-	res.setResponseBody(body);
-	res.assignHeaders("text/html", setConnection(getStatusCode()));
+	res.assignErrorBody(getStatusCode(), conf.getErrorPages());
+	res.assignHeaders(".html", setConnection(getStatusCode()));
+	if (getStatusCode() == 405)
+		res.setAllowedMethodsHeader(_methods);
+	res.buildRawResponse();
 }
 
 //////////////////////responseStatusMessage()
 
-catch {
-	Response res();
-	prepareErrorResponse(res, serverConfig.getErrorPages());
-	res.buildRawResponse();
-}
+// catch {
+// 	Response res();
+// 	prepareErrorResponse(res, serverConfig.getErrorPages());
+// 	res.buildRawResponse();
+// }

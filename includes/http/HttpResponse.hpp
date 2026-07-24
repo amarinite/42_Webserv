@@ -7,34 +7,34 @@
 
 class Response {
 	private:
-		std::string			_statusCode;
-		std::string 		_message;
-		const std::string 	_responseBody;
-		const std::string	_connection;
+		std::string							_statusCode;
+		std::string 						_message;
+		std::string							_responseBody;
+		std::string							_connection;
 
-		MimeTypes			_mimeMap;
+		MimeTypes							_mimeMap;
+		std::map<std::string, std::string>	_headers;
 
-		void assignHead(const HttpException& e);
+		std::vector<char>					_rawResponse;
 
 	public:
-		char*				_response;
-		size_t				_responseSize;
-
-		std::map<std::string, std::string> _headers;
-
 		Response();
-		// Response(const Response &other);
-		// Response &operator=(const Response &other);
+		~Response();
 
 		//Functs
 		std::string getTime();
-		void assignHead(const HttpException& e);
-		void assignHeaders(std::string &extension);
-		void assignBody(std::stirng &body);
-		void buildRawResponse();
+		// void		assignHead(const HttpException& e);
+		void		assignHeaders(std::string &extension);
+		void		assignErrorBody(std::stirng &body);
+		
+	    Response    prepareErrorResponse(Response &res, std::map<int, std::string> &error_pages);
+		void		prepareResponse();
+		void		buildRawResponse();
 
-		void setStatusCode();
-		void setMessage();
-		void setResponseBody();
-		void setConnection();
+		void setStatusCode(const std::string &code);
+		void setMessage(const std::string &msg);
+		void setResponseBody(const std::string &body);
+		void setConnection(const std::string &conn);
+
+		std::string getResponseBody();
 };
