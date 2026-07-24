@@ -21,6 +21,7 @@ class Http {
 		
 		State		_status;
 		Request		_request;
+		//CgiExecutor _cgi;
 		// Response	_response;
 		
 		//Functs

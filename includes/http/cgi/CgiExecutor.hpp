@@ -1,5 +1,12 @@
 #pragma once
 #include <string>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <stdexcept>
+#include <vector>
 
 class CgiExecutor 
 {
@@ -12,6 +19,9 @@ class CgiExecutor
 		std::string	_bodyToWrite;	// Holds remaining POST request body to send to CGI
 		std::string	_outputBuffer;	// Accumulates raw output read from CGI
 		bool		_isFinished;	// Set to true when CGI closes stdout or exits
+
+		void		closePipes(int* stdinPipe, int *stdoutPipe);
+		void		setNonBlocking(int fd);
 
 	public:
 		CgiExecutor();

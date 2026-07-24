@@ -41,7 +41,7 @@ void CgiHandler::validateCgiPaths(const std::string& scriptPath, const std::stri
 		throw HttpException(500, "Interpreter not executable");
 }
 
-char** CgiHandler::buildCgiEnv(const Request& req, const ServerConfig& conf, const std::string& path, const std::string& ip)
+char** CgiHandler::buildCgiEnv(const Request& req, const ServerConfig& conf, const std::string& ip)
 {
 	 std::map<std::string, std::string> env;
 
@@ -51,9 +51,9 @@ char** CgiHandler::buildCgiEnv(const Request& req, const ServerConfig& conf, con
 	env["SERVER_PROTOCOL"] = "HTTP/1.1";
 	env["SERVER_PORT"] = numberToString(servConf.getListen().port); // Get it from servConf
 	env["REQUEST_METHOD"] = req.getMethod();
-	env["SCRIPT_NAME"] = path.getUri().path;
+	env["SCRIPT_NAME"] = req.getUri().path;
 	env["REMOTE_ADDR"] = ip; // IP CLIENT
-	env["QUERY_STRING"] = path.getUri().query;
+	env["QUERY_STRING"] = req.getUri().query;
 	// path info
 
 	if (!req.getBody().empty())

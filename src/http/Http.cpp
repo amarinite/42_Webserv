@@ -97,6 +97,22 @@ void Http::HttpRoutine(char *buff, size_t bytesRead) {
 		}
 		case PROCESSING: {
 			//Alba
+
+			// if (CgiHandler::canHandleCgi(_request.getUri(), locationConf(?)))
+			// {
+			// 		char** envp = CgiHandler::buildCgiEnv(_request, servConf, ip)
+			// 		std::string scriptPath = locationConf.getRoot() + _request.getUri().path;
+			// 		std::string execPath = locationConf.getCgiExtension().begin()->second;
+
+			// 		_cgi.execute(envp, scriptPath, execPath(), const std::string& body);
+			// 		CgiHandler::freeCgiEnv(envp);
+
+			// 		// INSTANCE OF SOCKETMANAGER -> TO CHECK
+			// 		socketManager.addCgiFd(_cgi.getReadFd(), POLLIN, this);
+			// 		if (_cgi.getWriteFd() != -1)
+			// 			socketManager.addCgiFd(_cgi.getWriteFd(), POLLOUT, this);
+			// }
+					
 			break;
 		}
 		case WRITING_RESPONSE: {

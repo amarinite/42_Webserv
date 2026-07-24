@@ -22,6 +22,6 @@ class CgiHandler
 
 	public:
 		static bool		canHandleCgi(const t_uri& uri, const LocationConfig& conf);
-		static char**	buildCgiEnv(const Request& req, const ServerConfig& conf, const std::string& path, const std::string& ip);
+		static char**	buildCgiEnv(const Request& req, const ServerConfig& conf, const std::string& ip);
 		static void		freeCgiEnv(char** envp);
 };
