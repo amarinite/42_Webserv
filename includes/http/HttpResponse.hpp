@@ -1,9 +1,16 @@
 #pragma once
 
-#include "Http.hpp"
+// #include "Http.hpp"
+#include "HttpException.hpp"
 #include "MimeTypes.hpp"
+#include "ErrorMsg.hpp"
+#include "FileUtils.hpp"
 #include <ctime>
 #include <map>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <unistd.h>
 
 class Response {
 	private:
@@ -13,6 +20,7 @@ class Response {
 		std::string							_connection;
 
 		MimeTypes							_mimeMap;
+		ErrorMsg							_errMsg;
 		std::map<std::string, std::string>	_headers;
 
 		std::vector<char>					_rawResponse;
@@ -21,20 +29,23 @@ class Response {
 		Response();
 		~Response();
 
-		//Functs
+		// Helpers
 		std::string getTime();
-		// void		assignHead(const HttpException& e);
-		void		assignHeaders(std::string &extension);
-		void		assignErrorBody(std::stirng &body);
-		
-	    Response    prepareErrorResponse(Response &res, std::map<int, std::string> &error_pages);
-		void		prepareResponse();
+		void		assignHeaders(const std::string &extension, const std::string &connection);
+		void		assignErrorBody(const size_t &statusCode, const std::map<int, std::string> &error_pages);
+		void		errorBody(const std::string &statusCode, const std::string &errorDir);
 		void		buildRawResponse();
+		void		prepareErrorResponse(const std::map<int, std::string> &error_pages, HttpException &ex);		
 
-		void setStatusCode(const std::string &code);
-		void setMessage(const std::string &msg);
-		void setResponseBody(const std::string &body);
-		void setConnection(const std::string &conn);
+		// Setters
+		void		setStatusCode(const std::string &code);
+		void		setMessage(const std::string &msg);
+		void 		setResponseBody(const std::string &body);
+		void		setConnection(const std::string &conn);
+		void		setLocationHeader(const std::string &location);
+		void		setAllowedMethodsHeader(const std::string &allowed);
 
-		std::string getResponseBody();
+		// Getters
+		const std::string		&getResponseBody() const;
+		const std::vector<char>	&getRawResponse() const;
 };

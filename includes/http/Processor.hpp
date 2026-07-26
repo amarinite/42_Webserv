@@ -6,11 +6,14 @@
  * @date 2026-07-18
  */
 #pragma once
-#include "Http.hpp"
-#include "FileUtils.hpp"
+
 #include <sys/stat.h>
 #include <fstream>
 #include <sstream>
+
+#include "HttpRequest.hpp"
+#include "HttpResponse.hpp"
+#include "LocationConfig.hpp"
 
 /**
  * @class Processor
@@ -28,30 +31,36 @@ class Processor {
 		std::string		_code;
 		std::string		_codeMsg;
 
-		LocationConfig	&_lc;
-		Request			&_req;
-		Response		&_res;		
+		
+		Request					&_req;
+		Response				&_res;
+		LocationConfig	_lc;	
 
 		// Functs.
-		void convertFileExtension(const std::string &ext);
-		void createFile();
-		void doAutoIndex();
 		void handleGet();
 		void handlePost();
 		void handleDelete();
+		void convertFileExtension(const std::string &ext);
+		void createFile();
+		void doAutoIndex();
 		bool findIndexPage();
 		bool isValidMethod();
 
+		const std::string requestPath() const;
+
 	public: 
 		// Constructor.
-		Processor(Request &req, LocationConfig &lc);
+		Processor();
+		Processor(Request &req, Response &res, const LocationConfig &lc);
+		//Processor &operator=(const Processor &p);
 
 		// Functs.
-		void processorRoutine();
+		void		processorRoutine();
+		void		prepareResponse();
 
 		// Getters.
-		std::string getFullPath();
-		std::string getExtension();
-		std::string getResponseBody();
-		std::string getStatusCode();
+		const std::string &getFullPath() const;
+		const std::string &getExtension() const;
+		const std::string &getResponseBody() const;
+		const std::string &getStatusCode() const;
 };

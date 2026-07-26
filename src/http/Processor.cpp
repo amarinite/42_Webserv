@@ -1,4 +1,13 @@
 #include "Processor.hpp"
+#include "HttpRequest.hpp"
+#include "HttpResponse.hpp"
+#include "LocationConfig.hpp"
+#include "FileUtils.hpp"
+
+#include <sys/stat.h>
+#include <fstream>
+#include <dirent.h>
+
 /**
  * @brief Construct a new Processor:: Processor object
  * 
@@ -6,8 +15,15 @@
  * @param lc LocationConfig info
  * @param res Empty Response to store results.
  */
-Processor::Processor(Request &req, LocationConfig &lc)
-	: _req(req), _lc(lc) {}
+Processor::Processor(Request &req, Response &res, const LocationConfig &lc)
+	: _req(req), _res(res), _lc(lc) {}
+
+// Processor &Processor::operator=(const Processor &p) {
+// 	if (this != &a) {
+// 		_req = p._req;
+// 		_lc = p._lc;
+// 	}
+// }
 
 /**
  * @brief Concatenates root directory with the requested directory
@@ -43,35 +59,15 @@ void Processor::convertFileExtension(const std::string &ext) {
 	_extension = map.getType(ext);
 }
 
-// For POST
-// void Processor::handleMultipart(std::string &content) {
-// 	size_t pos = content.find("boundary")
-// 	if (pos == content.end())
-// 		throw HttpException(400, "Bad Request: Bad Header");
-// 	std::string boundary = "--" + content.substr(10);
-// }
-
-// void Processor::handleContentType() {
-// 	std::map<std::string, std::string>::iterator it = _req._headers.find("content-type");
-// 	if (it == _req._headers.end())
-// 		throw HttpException(400, "Bad Request: Missing Content-Type header");
-// 	if (it->second.find("multipart/form-data"))
-// 		handleMultipart(it->second);
-// 	else if (it->second.find("application/x-www-form-urlencoded"))
-// 		handleXForm(it->second);
-// 	else if (it->second.find("text/plain") || it->second.find("application/octet-stream"))
-// 		handlePlainTxt(it->second);
-// }
-
 /**
  * @brief Creates a file and fill it with the body parsed in the Http Request.
  * 
  * @throws HttpException 500 if ti fails creating th file.
  */
 void Processor::createFile() {
-	std::ofstream newFile(_fullpath);
+	std::ofstream newFile(_fullPath.c_str());
 	if (newFile.is_open()) {
-		newFile << _requestBody;
+		newFile << _req.getBody();
 		newFile.close();
 	} else
 		throw HttpException(500, "Internal Server Error: error creating file.");
@@ -105,9 +101,9 @@ bool Processor::findIndexPage() {
  * 
  * @return const std::string validated path.
  */
-const std::string Processor::requestPath() {
-	validateDir(_req._uri.path);
-	return _req._uri.path;
+const std::string Processor::requestPath() const {
+	validateDir(_req.getPath());
+	return _req.getPath();
 }
 
 /**
@@ -121,7 +117,7 @@ void Processor::doAutoIndex() {
 	if (!_lc.hasAutoIndex())
 		throw HttpException(403, "Forbidden");
 
-	DIR *folder = opendir(_fullpath.c_str());
+	DIR *folder = opendir(_fullPath.c_str());
 	if (folder == NULL) {
 		if (errno == EACCES)
 			throw HttpException(403, "Forbidden");
@@ -130,8 +126,9 @@ void Processor::doAutoIndex() {
 		else
 			throw HttpException(500, "Internal Server Error");
 	}
-	std::stringstream html;
+
 	std::string path = requestPath();
+	std::stringstream html;
 
 	html << "<html>\n<head><title>Index of " << path << "</title></head>\n";
 	html << "<body style=\"font-family: sans-serif; padding: 20px;\">\n";
@@ -153,20 +150,20 @@ void Processor::doAutoIndex() {
  * @brief Unifies de functions of GET method and sets the Status code and message.
  */
 void Processor::handleGet() {
-	bool isDir = validatePathDir();
+	bool isDir = validatePathDir(_fullPath);
 
 	if (!isDir) {
-			_extension = findFileExtension(_fullpath);
-			_responseBody = readFile(_fullpath);
+			_extension = findFileExtension(_fullPath);
+			_responseBody = readFile(_fullPath);
 	}
 	else {
 		if (findIndexPage()) {
-			_extension = findFileExtension(_fullpath);
-			_responseBody = readFile(_fullpath);
+			_extension = findFileExtension(_fullPath);
+			_responseBody = readFile(_fullPath);
 		} else
 			doAutoIndex();
 	}
-	_code = 200;
+	_code = "200";
 	_codeMsg = "Ok";
 }
 
@@ -186,14 +183,14 @@ void Processor::handleGet() {
 void Processor::handleDelete() {
 	validateFile(_fullPath);
 	removeFile(_fullPath);
-	_code = 204;
+	_code = "204";
 	_codeMsg = "No Content";
 	_responseBody.clear();
 }
 
 bool Processor::isValidMethod() {
 	const std::vector<std::string> &methods = _lc.getAllowedMethods();
-	std::vector<std::string>::iterator it = methods.begin();
+	std::vector<std::string>::const_iterator it = methods.begin();
 	for (; it != methods.end(); ++it) {
 		if (*it == _req.getMethod())
 			return true;
@@ -201,7 +198,7 @@ bool Processor::isValidMethod() {
 	return false;
 }
 
-static std::string findAllowedMethods(std::vector<std::string>& allowed) {
+static std::string findAllowedMethods(const std::vector<std::string> &allowed) {
 	std::ostringstream oss;
 	for (size_t i = 0; i < allowed.size(); ++i) {
 		if (i != 0)
@@ -220,14 +217,14 @@ static std::string findAllowedMethods(std::vector<std::string>& allowed) {
 void Processor::processorRoutine() {
 	_fullPath = concatPaths(_lc.getRoot(), _req.getPath());
 	if (!isValidMethod()) {
-		throw HttpException(405, "Method Not Allowed", findAllowedMethods(getAllowedMethods()));
+		throw HttpException(405, "Method Not Allowed", findAllowedMethods(_lc.getAllowedMethods()));
 	}
 	// Redirect
 	// CGI
 	if (_req.getMethod() == "GET")
 		handleGet();
-	else if (_req.getMethod() ==  "POST")
-		handlePost();
+	// else if (_req.getMethod() ==  "POST")
+		// handlePost();
 	else if (_req.getMethod() ==  "DELETE")
 		handleDelete();
 	else
@@ -239,11 +236,11 @@ void Processor::processorRoutine() {
  * 
  */
 void Processor::prepareResponse() {
-	if (!_res._responseBody.empty())
+	if (!_res.getResponseBody().empty())
 		_res.setResponseBody(_responseBody);
 	_res.assignHeaders(_extension, _req.getConnection());
-	if (_statusCode == "301")
-		_res.setLocationHeader(_redirectPath);
+	if (_code == "301")
+		_res.setLocationHeader(_lc.getRedirect().path);
 	_res.buildRawResponse();
 }
 
@@ -253,7 +250,7 @@ void Processor::prepareResponse() {
  * 
  * @return std::string The fullPath variable.
  */
-std::string Processor::getFullPath() {
+const std::string &Processor::getFullPath() const {
 	return _fullPath;
 }
 
@@ -262,7 +259,7 @@ std::string Processor::getFullPath() {
  * 
  * @return std::string The Extension variable.
  */
-std::string Processor::getExtension() {
+const std::string &Processor::getExtension() const {
 	return _extension;
 }
 
@@ -271,7 +268,7 @@ std::string Processor::getExtension() {
  * 
  * @return std::string The Response Body variable.
  */
-std::string Processor::getResponseBody() {
+const std::string &Processor::getResponseBody() const {
 	return _responseBody;
 }
 
@@ -280,6 +277,6 @@ std::string Processor::getResponseBody() {
  * 
  * @return std::string The Status Code variable.
  */
-std::string Processor::getStatusCode() {
+const std::string &Processor::getStatusCode() const {
 	return _code;
 }

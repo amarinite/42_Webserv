@@ -1,34 +1,38 @@
 #include "Http.hpp"
 
-Http::Http(ServerConfig	&sc) : _rawBuff(""),
-	_rawBuffSize(0),
+Http::Http(const ServerConfig &sc) :
+	_rawBuff(""),
+	_sConfig(sc),
 	_status(READING_HEADERS),
-	_request(),
-	_response(),
-	_sConfig(sc) {
-		_processor(_request, _sConfig.getLocationConfig(_request._uri));
-}
+    _request(sc.getClientMaxBodySize()),
+    _response(),
+    _processor(NULL) {}
 
-// Http::~Http() {}
+Http::~Http() {
+	if (_processor != NULL) {
+		delete _processor;
+		_processor = NULL;
+	}
+}
 
 //Functs
 void Http::addLeftover(std::string &rawBuff, size_t &rawBufferSize) {
-	const bool hasLeftover = !_request._leftover.empty();
+	const bool hasLeftover = !_request.getLeftover().empty();
 	const bool hasRawBuff  = !rawBuff.empty();
 
 	if (!hasLeftover && hasRawBuff)
 		return;
 	if (hasLeftover && !hasRawBuff) {
-		rawBuff = _request._leftover;
+		rawBuff = _request.getLeftover();
 		rawBufferSize = rawBuff.size();
-		_request._leftover.clear();
+		_request.clearLeftover();
 		return;
 	}
 	if (!hasLeftover && !hasRawBuff)
 		throw HttpException(400, "Bad Request: Empty Buffer.");
-	rawBuff = _request._leftover + rawBuff;
-	rawBufferSize += _request._leftover.size();
-	_request._leftover.clear();
+	rawBuff = _request.getLeftover() + rawBuff;
+	rawBufferSize += _request.getLeftover().size();
+	_request.clearLeftover();
 }
 
 void Http::handleBuffer(char *buff, size_t bytesRead) {
@@ -39,14 +43,14 @@ void Http::handleBuffer(char *buff, size_t bytesRead) {
 	size_t rawBuffSize = bytesRead;
 	addLeftover(rawBuff, rawBuffSize);
 
-	_request._stream = rawBuff;
+	_request.setStream(rawBuff);
 }
 
 bool Http::methodGetCase() {
-	if (_request._method != "GET") 
+	if (_request.getMethod() != "GET") 
 		return true;
-	if (_request._headers.count("content-length") > 0
-		|| _request._headers.count("transfer-encoding") > 0)
+	const std::map<std::string, std::string> &headers = _request.getHeaders();
+	if (headers.count("content-length") > 0 || headers.count("transfer-encoding") > 0)
 		throw HttpException(400, "Bad Request: Body Present in GET Method.");
 	return true;
 }
@@ -74,6 +78,9 @@ void Http::HttpRoutine(char *buff, size_t bytesRead) {
 				_status = READING_BODY;
 				if (methodGetCase() && _request.parseRequestBody()) {
 					_status = PROCESSING;
+					if (_processor != NULL)
+						delete _processor;
+					_processor = new Processor(_request, _response, _sConfig.getLocationConfig(_request.getUri()));
 					goto processing;
 				}
 			}
@@ -83,29 +90,28 @@ void Http::HttpRoutine(char *buff, size_t bytesRead) {
 			handleBuffer(buff, bytesRead);
 			if (_request.parseRequestBody()) {
 				_status = PROCESSING;
+				if (_processor != NULL)
+						delete _processor;
+				_processor = new Processor(_request, _response, _sConfig.getLocationConfig(_request.getUri()));
 				goto processing;
 			}
 			break;
 		}
 		case PROCESSING: {
 		processing:	
-			_processor.processorRoutine();
-			_status = WRITING_RESPONSE;		
+			_processor->processorRoutine();
+			_status = WRITING_RESPONSE;	
 		}
+		// fall through
 		case WRITING_RESPONSE: {
-			_processor.prepareResponse();
+			_processor->prepareResponse();
 			_status = FINISHED;
 		}
+		// fall through
+		case FINISHED:
+			break;
 	}
 }
-
-void Http::buildResponse(const HttpException& e) {
-	_response.assignHead(e);
-	_response.assignHeaders(_request._headers);
-}
-
-
-
 
 // Getters
 State Http::getStatus() const {
@@ -120,9 +126,11 @@ Request &Http::getRequest() {
 	return _request;
 }
 
-Response Http::getResponse() {
+const Response &Http::getResponse() const {
 	return _response;
 }
-////////////////////////
-// Revisa si inicialitzes correctament la request i la response. 
-// - Maybe el constructor per defecte de request hauria de fer inicialitzacio basica. 
+
+Response &Http::getResponse() {
+	return _response;
+}
+

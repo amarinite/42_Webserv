@@ -37,4 +37,7 @@ class ServerConfig
 		const std::vector<std::string>&		getIndex() const;
 		const std::vector<LocationConfig>&	getLocations() const;
 		const LocationConfig&				getLocationConfig(const t_uri& uri) const;
+
+		// For testing purposes
+		void addLocation(const LocationConfig& loc) { _locations.push_back(loc); }
 };

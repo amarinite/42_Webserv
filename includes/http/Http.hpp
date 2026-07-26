@@ -1,9 +1,13 @@
 #pragma once
 
-#include <cerrno>
 #include <string>
+
+#include "ServerConfig.hpp"
 #include "HttpRequest.hpp"
-#include "HttpException.hpp"
+#include "Processor.hpp"
+#include "HttpResponse.hpp"
+
+
 
 enum State {
 	READING_HEADERS,
@@ -15,15 +19,14 @@ enum State {
 
 class Http {
 	private:
-		std::string		_rawBuff;
-		size_t			_rawBuffSize;
+		std::string			_rawBuff;
 		
-		State			_status;
-		Request			_request;
-		Processor		_processor;
-		Response		_response;
+		const ServerConfig	&_sConfig;
+		State		 		_status;
+		Request				_request;
+		Response			_response;
+		Processor			*_processor;
 		
-		ServerConfig	_sConfig;
 		// IP!!!!!!!!!!!!!!!!!!!
 
 		//Functs
@@ -32,9 +35,8 @@ class Http {
 		bool methodGetCase();
 
 	public:
-		Http(ServerConfig	&sc);
-		// Http(const HandleSocket &socket);
-		// ~Http();
+		Http(const ServerConfig	&sc);
+		~Http();
 
 		//Functs
 		void 			HttpRoutine(char *buff, size_t bytesRead);
@@ -43,6 +45,7 @@ class Http {
 		State 			getStatus() const;
 		const Request	&getRequest() const;
 		Request			&getRequest();
-		Response		getResponse();
+		const Response  &getResponse() const;
+    	Response		&getResponse();
 };
 

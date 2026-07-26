@@ -83,7 +83,7 @@ bool validateDir(const std::string &dir) {
  * @return std::string Extension of the file.
  * @throws HttpException 400 if the extension has a non contemplated length.
  */
-std::string findFileExtension(std::string &path) {
+std::string findFileExtension(const std::string &path) {
 	size_t lastSlash = path.rfind('/');
 	size_t dot = path.rfind('.');
 	if (dot == std::string::npos || (lastSlash != std::string::npos && dot < lastSlash))
@@ -99,9 +99,10 @@ std::string findFileExtension(std::string &path) {
  * @param path the full path to analyze.
  * @throws HttpException 500 if std::remove() fails.
  */
-void removeFile(std::string &path) {
+void removeFile(const std::string &path) {
 	if (access(path.c_str(), W_OK) != 0) {
         throw HttpException(403, "Forbidden: No write permissions to delete file.");
     }
 	if (std::remove(path.c_str()) != 0)
-}		throw HttpException(500, "Internal Server Error: Couldnt remove file.");
+		throw HttpException(500, "Internal Server Error: Couldnt remove file.");
+}

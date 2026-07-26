@@ -1,6 +1,8 @@
 #include "HttpRequest.hpp"
 
-Request::Request(int &clientMaxBodySize) : __client_max_body_size(clientMaxBodySize),
+bool exceptConnection = false;
+
+Request::Request(size_t clientMaxBodySize) :
 	_methodParsed(false),
 	_uriParsed(false),
 	_httpVerParsed(false),
@@ -9,27 +11,29 @@ Request::Request(int &clientMaxBodySize) : __client_max_body_size(clientMaxBodyS
 	_incompleteEndLine(false),
 	_bodyType(EMPTY),
 	_maxBodySize(0),
-	_chunkSize(false) {}
+	_client_max_body_size(clientMaxBodySize),
+	_chunkSize(false),
+	_allowedMethods(NULL) {}
 
-Request::Request(const Request &other) : _leftover(NULL) {
-	*this = other;
-}
+// Request::Request(const Request &other) : _leftover(NULL) {
+// 	*this = other;
+// }
 
-Request &Request::operator=(const Request &other) {
-	if (this != &other) {
-		this->_headers = other._headers;
-		this->_body = other._body;
-		this->_stream = other._stream;
-		this->_leftover = other._leftover;
-	}
-	return *this;
-}
+// Request &Request::operator=(const Request &other) {
+// 	if (this != &other) {
+// 		this->_headers = other._headers;
+// 		this->_body = other._body;
+// 		this->_stream = other._stream;
+// 		this->_leftover = other._leftover;
+// 	}
+// 	return *this;
+// }
 
 Request::~Request() {}
 
 // Functs
 std::string Request::getConnection() const {
-	std::map<std::string, std::string>::const iterator it = _headers.find("connection");
+	std::map<std::string, std::string>::const_iterator it = _headers.find("connection");
 	if (it != _headers.end()) {
 		if (it->second == "close")
 			return "close";
@@ -39,7 +43,7 @@ std::string Request::getConnection() const {
 
 static void tolowerStr(std::string &str) {
 	for (size_t i = 0; i < str.size(); ++i) {
-		unsigned char c = static_cast<char>(str[i]);
+		unsigned char c = static_cast<unsigned char>(str[i]);
 		str[i] = static_cast<char>(std::tolower(c));
 	}
 }
@@ -229,7 +233,7 @@ bool Request::parseRequestHead() {
 }
 
 // Body Functs
-bool isHexDigit(char c) {
+static bool isHexDigit(char c) {
 	return std::isdigit(static_cast<unsigned char>(c)) ||
 		   (c >= 'a' && c <= 'f') ||
 		   (c >= 'A' && c <= 'F');
@@ -268,7 +272,7 @@ void Request::setBodyType() {
 	}
 	else if (hasContentLength) {
 		_bodyType = FULL;
-		_maxBodySize = strToSize_t(_headers.find("content-length")->second.c_str(), 10);
+		_maxBodySize = strToSize_t(_headers.find("content-length")->second, 10);
 		if (_maxBodySize > _client_max_body_size)
 			throw HttpException(413, "Payload Too Large.");
 	} else if (hasTransferEncoding) 
@@ -365,18 +369,36 @@ bool Request::parseRequestBody() {
 }
 
 //Getters
-std::string	Request::getMethod() {
+const std::string &Request::getMethod() const{
 	return this->_method;
 }
 
-std::map<std::string, std::string>  Request::getHeaders() {
-	return this->_headers;
-}
-
-std::string	Request::getBody() {
+const std::string &Request::getBody() const {
 	return this->_body;
 }
 
-std::string Request::getPath() {
-	return this->_uri.path;
+const std::string &Request::getPath() const {
+	return _uri.path;
+}
+
+std::string Request::getLeftover(){
+	return _leftover;
+}
+
+const t_uri &Request::getUri() const{
+	return this->_uri;
+}
+
+const std::map<std::string, std::string> Request::getHeaders() const{
+	return this->_headers;
+}
+
+// Setters
+void Request::setStream(const std::string &stream) {
+	_stream = stream;
+}
+
+// Other Var tools
+void Request::clearLeftover() {
+	_leftover.clear();
 }

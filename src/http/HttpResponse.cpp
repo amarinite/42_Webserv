@@ -1,8 +1,8 @@
 #include "HttpResponse.hpp"
 
-Response::Response() {
-	_mimeMap;
-}
+Response::Response() {}
+
+Response::~Response() {}
 
 // void Response::assignHead(const HttpException& e) {
 // 	_statusCode = e.getStatusCode();
@@ -27,17 +27,28 @@ std::string Response::getTime() {
 	throw HttpException(500, "Internal Server Error.");
 }
 
-void Response::assignHeaders(std::string &extension, std::string &connection) {
+void Response::assignHeaders(const std::string &extension, const std::string &connection) {
 	_headers["Server: "] = "Group de Afectadous by Taha";
 	_headers["Date: "] = getTime();
 	_headers["Connection: "] = connection;
 	if (!_responseBody.empty()) {
 		_headers["Content-Type: "] = _mimeMap.getType(extension);
-		_headers["Content-Length: "] = toString(_responseBody.size());
+		_headers["Content-Length: "] = toStr(_responseBody.size());
 	}
 }
 
-void Response::errorBody(const std::string &statusCode, std::string &errorDir) {
+// Case 301 - Redirect
+void Response::setLocationHeader(const std::string &location) {
+	if (!location.empty())
+		_headers["Location: "] = location;
+}
+
+// Case 405 - Not allowed method.
+void Response::setAllowedMethodsHeader(const std::string &allowed) {
+	_headers["Allow: "] = allowed;
+}
+
+void Response::errorBody(const std::string &statusCode, const std::string &errorDir) {
 	std::string errPage = errorDir;
 	if (!errPage.empty() && errPage[errPage.size() - 1] != '/') {
 		errPage += "/";
@@ -46,15 +57,18 @@ void Response::errorBody(const std::string &statusCode, std::string &errorDir) {
 	try {
 		_responseBody = readFile(errPage);
 	} catch (...) {
-		_statusCode = 500;
+		_statusCode = toStr(500);
 		_message = "Internal Server Error";
 		_responseBody = "<h1>500 Internal Server Error</h1>";
 	}
 }
 
-void Response::assignErrorBody(size_t &statusCode, const std::map<int, std::string> &error_pages) {
+void Response::assignErrorBody(const size_t &statusCode, const std::map<int, std::string> &error_pages) {
 	if (statusCode > 399) {
-		_responseBody = errorBody(toStr(statusCode), error_pages[statusCode]);
+		std::map<int, std::string>::const_iterator it = error_pages.find(static_cast<int>(statusCode));
+		
+		if (it != error_pages.end())
+			errorBody(toStr(statusCode), it->second);
 	}
 }
 
@@ -72,28 +86,37 @@ void Response::buildRawResponse() {
 	_rawResponse.assign(fullResponse.begin(), fullResponse.end());
 }
 
-// Case 301 - Redirect
-void Response::setLocationHeader(const std::string &location) {
-	if (!location.empty())
-		_headers["Location: "] = location;
-}
-
-// // Case 405 - Not allowed method.
-void Response::setAllowedMethodsHeader(const std::string &allowed) {
-	_headers["AllowedMethods: "] = allowed;
-}
 
 
-// void	Response::prepareErrorResponse(HttpException &exc, std::map<int, std::string> &error_pages) {
-// 	Response res();
-// 	std::string strStatusCode = intToString(exc.getStatusCode());
-
-// 	res.setStatusCode(strStatusCode);
-// 	res.setMessage(responseStatusMessage(strStatusCode));
-// 	std::string body = errorPageBody(exc.getStatusCode(), error_pages);
-// 	res.setResponseBody(body);
-// 	res.assignHeaders("text/html", setConnection(exc.getStatusCode()));
+// // Error Response
+// static std::string errorPageBody(const int errorCode, std::map<int, std::string> &error_pages) {
+// 	std::map<int, std::string>::iterator it = error_pages.begin();
+// 	for (; it != error_pages.end(); ++it) {
+// 		if (it->first == errorCode)
+// 			return readFile(it->second);
+// 	}
+// 	return "";
 // }
+
+static std::string setErrorConnection(const int &code) {
+	if (code == 400 || code == 413 || code > 499 || !exceptConnection)
+		return "close";
+	else 
+		return "keep-alive";
+}
+
+// conf.getErrorPages()
+void	Response::prepareErrorResponse(const std::map<int, std::string> &error_pages, HttpException &ex) {
+	std::string strStatusCode = toStr(ex.getStatusCode());
+
+	setStatusCode(strStatusCode);
+	setMessage(_errMsg.getErrorMsg(ex.getStatusCode()));
+	assignErrorBody(ex.getStatusCode(), error_pages);
+	assignHeaders(".html", setErrorConnection(ex.getStatusCode()));
+	if (ex.getStatusCode() == 405)
+		setAllowedMethodsHeader(ex.getMethods());
+	buildRawResponse();
+}
 
 // Setters.
 void Response::setStatusCode(const std::string &code) {
@@ -112,6 +135,10 @@ void Response::setConnection(const std::string &conn) {
 	_connection = conn;
 }
 
-std::string Response::getResponseBody() {
+const std::string& Response::getResponseBody() const {
 	return _responseBody;
+}
+
+const std::vector<char> &Response::getRawResponse() const {
+	return _rawResponse;
 }

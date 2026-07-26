@@ -1,30 +1,35 @@
 #pragma once
 
-#include "Http.hpp"
-#include "FileUtils.hpp"
-#include <exception>
+#include <stdexcept>
 #include <string>
-#include <cstdio>
 
 extern bool exceptConnection;
 
 class HttpException : public std::runtime_error {
 private:
-    int         _statusCode;
-    std::string _message;
-    std::string _methods;
+	int			_statusCode;
+	std::string _message;
+	std::string _methods;
 
 public:
-	HttpException(int code, const std::string& msg, const std::string &methods = "") : _statusCode(code), std::runtime_error(msg), _methods(methods) {}
+	HttpException(int code, const std::string& msg, const std::string &methods = "") : 
+		std::runtime_error(msg),	
+		_statusCode(code),
+		_message(msg),
+		_methods(methods)
+	{}
+
 	virtual ~HttpException() throw() {}
 
 	virtual const char* what() const throw() {
-        return _message.c_str();
-    }
+		return _message.c_str();
+	}
 
-    int getStatusCode() const {
-        return _statusCode;
-    }
+	int getStatusCode() const {
+		return _statusCode;
+	}
 
-    Response    prepareErrorResponse(Response &res, std::map<int, std::string> &error_pages);
+	const std::string &getMethods() const {
+		return _methods;
+	}
 };

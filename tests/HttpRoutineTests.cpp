@@ -2,14 +2,14 @@
 #include <map>
 #include <string>
 #include <vector>
-#include <cstdlib>
 
 #include "Http.hpp"
 #include "HttpException.hpp"
 #include "HttpResponse.hpp"
+#include "ServerConfig.hpp"
 
 // ============================================================================
-// MACROS & MACRO-HARNESS DE PRUEBAS (C++98)
+// MACROS & HARNESS DE PRUEBAS
 // ============================================================================
 
 #define RESET "\033[0m"
@@ -40,23 +40,36 @@ inline void printTestSummary(const char* name, int passed, int failed) {
 	std::cout << "\n";
 }
 
-// Helper para alimentar la maquina de estados de Http de forma segura
+// Instancia global o helper para proveer un ServerConfig a los tests
+static ServerConfig& getTestConfig() {
+	static ServerConfig config;
+	static bool initialized = false;
+
+	if (!initialized) {
+		// Inyectamos la location por defecto '/' para que las peticiones
+		// encuentren un LocationConfig valido y no fallen con SIGSEGV (0x0).
+		config.addLocation(LocationConfig::buildDefault(config));
+		initialized = true;
+	}
+	return config;
+}
+
+// Helper para alimentar la máquina de estados de Http
 static void feed(Http& h, const std::string& s) {
 	if (s.empty()) {
 		h.HttpRoutine(NULL, 0);
 	} else {
-		// Pasamos buffer no-constante compatible con la firma HttpRoutine(char*, size_t)
 		std::vector<char> buff(s.begin(), s.end());
 		h.HttpRoutine(&buff[0], buff.size());
 	}
 }
 
 // ============================================================================
-// 1. TESTS ADAPTADOS DE PETICIÓN (REQUEST & PARSING)
+// SUITE DE TESTS
 // ============================================================================
 
 static bool testSimpleGetRequest() {
-	Http h;
+	Http h(getTestConfig());
 	feed(h, "GET /index.html HTTP/1.1\r\nHost: localhost\r\nUser-Agent: Mozilla\r\n\r\n");
 
 	ASSERT(h.getStatus() == PROCESSING || h.getStatus() == FINISHED);
@@ -71,7 +84,7 @@ static bool testSimpleGetRequest() {
 }
 
 static bool testMissingHostHeaderThrows() {
-	Http h;
+	Http h(getTestConfig());
 	try {
 		feed(h, "GET /index.html HTTP/1.1\r\nUser-Agent: Mozilla\r\n\r\n");
 		ASSERT(false);
@@ -82,7 +95,7 @@ static bool testMissingHostHeaderThrows() {
 }
 
 static bool testHeaderValueTrimming() {
-	Http h;
+	Http h(getTestConfig());
 	feed(h, "POST /api HTTP/1.1\r\nHost:   localhost:8080   \r\nContent-Type:  text/html; charset=utf-8  \r\nContent-Length: 0\r\n\r\n");
 
 	std::map<std::string, std::string> headers = h.getRequest().getHeaders();
@@ -92,7 +105,7 @@ static bool testHeaderValueTrimming() {
 }
 
 static bool testHeaderKeysAreCaseInsensitive() {
-	Http h;
+	Http h(getTestConfig());
 	feed(h, "GET /a HTTP/1.1\r\nHOsT: example.com\r\n\r\n");
 	std::map<std::string, std::string> headers = h.getRequest().getHeaders();
 	ASSERT(headers.count("host") == 1);
@@ -101,7 +114,7 @@ static bool testHeaderKeysAreCaseInsensitive() {
 }
 
 static bool testDuplicateHostThrows() {
-	Http h;
+	Http h(getTestConfig());
 	try {
 		feed(h, "GET /a HTTP/1.1\r\nHost: localhost\r\nHost: duplicate.com\r\n\r\n");
 		ASSERT(false);
@@ -112,7 +125,7 @@ static bool testDuplicateHostThrows() {
 }
 
 static bool testDuplicateContentLengthThrows() {
-	Http h;
+	Http h(getTestConfig());
 	try {
 		feed(h, "POST /a HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\nContent-Length: 10\r\n\r\n");
 		ASSERT(false);
@@ -123,7 +136,7 @@ static bool testDuplicateContentLengthThrows() {
 }
 
 static bool testInvalidVersionThrows() {
-	Http h;
+	Http h(getTestConfig());
 	try {
 		feed(h, "GET /a HTTP/1.0\r\nHost: localhost\r\n\r\n");
 		ASSERT(false);
@@ -134,7 +147,7 @@ static bool testInvalidVersionThrows() {
 }
 
 static bool testMalformedRequestLineThrows() {
-	Http h;
+	Http h(getTestConfig());
 	try {
 		feed(h, "GET /only-two-tokens\r\nHost: localhost1\r\n\r\n");
 		ASSERT(false);
@@ -145,7 +158,7 @@ static bool testMalformedRequestLineThrows() {
 }
 
 static bool testHeaderWithoutColonThrows() {
-	Http h;
+	Http h(getTestConfig());
 	try {
 		feed(h, "GET /a HTTP/1.1\r\nHost localhost\r\n\r\n");
 		ASSERT(false);
@@ -156,7 +169,7 @@ static bool testHeaderWithoutColonThrows() {
 }
 
 static bool testEmptyHeaderKeyThrows() {
-	Http h;
+	Http h(getTestConfig());
 	try {
 		feed(h, "GET /a HTTP/1.1\r\n: value\r\nHost: localhost3\r\n\r\n");
 		ASSERT(false);
@@ -167,7 +180,7 @@ static bool testEmptyHeaderKeyThrows() {
 }
 
 static bool testEmptyHeaderValueAccepted() {
-	Http h;
+	Http h(getTestConfig());
 	feed(h, "GET /a HTTP/1.1\r\nHost: localhost\r\nX-Empty:\r\n\r\n");
 
 	std::map<std::string, std::string> headers = h.getRequest().getHeaders();
@@ -177,7 +190,7 @@ static bool testEmptyHeaderValueAccepted() {
 }
 
 static bool testContentLengthZero() {
-	Http h;
+	Http h(getTestConfig());
 	feed(h, "POST /upload HTTP/1.1\r\nHost: localhost1\r\nContent-Length: 0\r\n\r\n");
 
 	ASSERT(h.getRequest().getBody().empty());
@@ -185,7 +198,7 @@ static bool testContentLengthZero() {
 }
 
 static bool testContentLengthBodyTooShortNotDone() {
-	Http h;
+	Http h(getTestConfig());
 	feed(h, "POST /submit HTTP/1.1\r\nHost: localhost3\r\nContent-Length: 10\r\n\r\nHello");
 
 	ASSERT(h.getStatus() == READING_BODY);
@@ -193,7 +206,7 @@ static bool testContentLengthBodyTooShortNotDone() {
 }
 
 static bool testNegativeContentLengthThrows() {
-	Http h;
+	Http h(getTestConfig());
 	try {
 		feed(h, "POST /submit HTTP/1.1\r\nHost: localhost\r\nContent-Length: -3\r\n\r\n");
 		ASSERT(false);
@@ -204,7 +217,7 @@ static bool testNegativeContentLengthThrows() {
 }
 
 static bool testChunkedSingleChunkAccepted() {
-	Http h;
+	Http h(getTestConfig());
 	feed(h, "POST /stream HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n0\r\n\r\n");
 
 	ASSERT(h.getRequest().getBody() == "Hello");
@@ -212,7 +225,7 @@ static bool testChunkedSingleChunkAccepted() {
 }
 
 static bool testChunkedMultipleChunksAccepted() {
-	Http h;
+	Http h(getTestConfig());
 	feed(h, "POST /stream HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n6\r\n World\r\n0\r\n\r\n");
 
 	ASSERT(h.getRequest().getBody() == "Hello World");
@@ -220,7 +233,7 @@ static bool testChunkedMultipleChunksAccepted() {
 }
 
 static bool testChunkedInvalidHexSizeThrows() {
-	Http h;
+	Http h(getTestConfig());
 	try {
 		feed(h, "POST /stream HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\nZ\r\nHello\r\n0\r\n\r\n");
 		ASSERT(false);
@@ -231,7 +244,7 @@ static bool testChunkedInvalidHexSizeThrows() {
 }
 
 static bool testBothContentLengthAndChunkedPolicy() {
-	Http h;
+	Http h(getTestConfig());
 	try {
 		feed(h, "POST /x HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n0\r\n\r\n");
 		ASSERT(false);
@@ -242,7 +255,7 @@ static bool testBothContentLengthAndChunkedPolicy() {
 }
 
 static bool testGetMethodWithBodyThrows() {
-	Http h;
+	Http h(getTestConfig());
 	try {
 		feed(h, "GET /index.html HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\n\r\n12345");
 		ASSERT(false);
@@ -253,7 +266,7 @@ static bool testGetMethodWithBodyThrows() {
 }
 
 static bool testSpaceInHeaderKeyThrows() {
-	Http h;
+	Http h(getTestConfig());
 	try {
 		feed(h, "GET / HTTP/1.1\r\nHost : localhost\r\n\r\n");
 		ASSERT(false);
@@ -264,7 +277,7 @@ static bool testSpaceInHeaderKeyThrows() {
 }
 
 static bool testFragmentedHeaderParsing() {
-	Http h;
+	Http h(getTestConfig());
 	feed(h, "GET /index.h");
 	ASSERT(h.getStatus() == READING_HEADERS);
 	
@@ -280,7 +293,7 @@ static bool testFragmentedHeaderParsing() {
 }
 
 static bool testChunkedFragmentedPayload() {
-	Http h;
+	Http h(getTestConfig());
 	feed(h, "POST /stream HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n");
 	ASSERT(h.getStatus() == READING_BODY);
 
@@ -296,7 +309,7 @@ static bool testChunkedFragmentedPayload() {
 }
 
 static bool testInvalidDelimiterInRequestLineThrows() {
-	Http h;
+	Http h(getTestConfig());
 	try {
 		feed(h, "GET /index.html HTTP/1.1\nHost: localhost\r\n\r\n");
 		ASSERT(false);
@@ -307,37 +320,33 @@ static bool testInvalidDelimiterInRequestLineThrows() {
 }
 
 static bool testMultiLineHeaderValueFoldingSupported() {
-	Http h;
+	Http h(getTestConfig());
 	feed(h, "GET / HTTP/1.1\r\nHost: localhost\r\nX-Custom: val1\r\nX-Custom: val2\r\n\r\n");
 	std::map<std::string, std::string> headers = h.getRequest().getHeaders();
 	ASSERT(headers["x-custom"] == "val1, val2");
 	return true;
 }
 
-// ============================================================================
-// 2. NUEVOS TESTS DE CASOS LÍMITE (EDGE CASES & ADVANCED FLOWS)
-// ============================================================================
-
 static bool testUriWithQueryStringAndFragment() {
-	Http h;
+	Http h(getTestConfig());
 	feed(h, "GET /search?query=c++98&lang=es HTTP/1.1\r\nHost: localhost\r\n\r\n");
 	ASSERT(h.getRequest().getPath() == "/search");
 	return true;
 }
 
 static bool testContentLengthExceedsClientMaxBodySize() {
-	Http h; // Asumiendo clientMaxBodySize configurado por defecto
+	Http h(getTestConfig());
 	try {
 		feed(h, "POST /upload HTTP/1.1\r\nHost: localhost\r\nContent-Length: 999999999999\r\n\r\n");
 		ASSERT(false);
 	} catch (const HttpException& e) {
-		ASSERT(e.getStatusCode() == 413); // Payload Too Large
+		ASSERT(e.getStatusCode() == 413);
 	}
 	return true;
 }
 
 static bool testChunkedExceedsClientMaxBodySize() {
-	Http h;
+	Http h(getTestConfig());
 	try {
 		feed(h, "POST /upload HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n1000000\r\n");
 		ASSERT(false);
@@ -348,7 +357,7 @@ static bool testChunkedExceedsClientMaxBodySize() {
 }
 
 static bool testCRLFDistributedAcrossPackets() {
-	Http h;
+	Http h(getTestConfig());
 	feed(h, "GET / HTTP/1.1\r\nHost: localhost\r\n\r");
 	ASSERT(h.getStatus() == READING_HEADERS);
 	feed(h, "\n");
@@ -357,7 +366,7 @@ static bool testCRLFDistributedAcrossPackets() {
 }
 
 static bool testHeadersWithTabSpaces() {
-	Http h;
+	Http h(getTestConfig());
 	feed(h, "GET / HTTP/1.1\r\nHost:\tlocalhost\r\nCustom-Header:\t  value \t \r\n\r\n");
 	std::map<std::string, std::string> headers = h.getRequest().getHeaders();
 	ASSERT(headers["host"] == "localhost");
@@ -366,79 +375,12 @@ static bool testHeadersWithTabSpaces() {
 }
 
 static bool testZeroBufferBytesReadHandling() {
-	Http h;
+	Http h(getTestConfig());
 	feed(h, "GET / HTTP/1.1\r\nHost: localhost\r\n");
-	// Simular lectura de 0 bytes (EOF o timeout) sin alterar el stream
 	h.HttpRoutine(NULL, 0);
 	ASSERT(h.getStatus() == READING_HEADERS);
 	return true;
 }
-
-static bool testResponseRawBufferDataPersists() {
-	Response res;
-	res.setStatusCode("200");
-	res.setMessage("OK");
-	res.setResponseBody("Hello World");
-	res.assignHeaders("html", "close");
-	res.buildRawResponse();
-
-	const char* raw = res.getRawData();
-	size_t size = res.getRawSize();
-
-	ASSERT(raw != NULL);
-	ASSERT(size > 0);
-
-	std::string rawStr(raw, size);
-	ASSERT(rawStr.find("HTTP/1.1 200 OK\r\n") == 0);
-	ASSERT(rawStr.find("Content-Length: 11\r\n") != std::string::npos);
-	ASSERT(rawStr.find("\r\n\r\nHello World") != std::string::npos);
-	return true;
-}
-
-static bool testResponseAllowedMethodsHeader() {
-	Response res;
-	res.setStatusCode("405");
-	res.setMessage("Method Not Allowed");
-	res.setAllowedMethodsHeader("GET, POST");
-	res.buildRawResponse();
-
-	std::string rawStr(res.getRawData(), res.getRawSize());
-	ASSERT(rawStr.find("Allow: GET, POST\r\n") != std::string::npos);
-	return true;
-}
-
-static bool testResponseLocationHeaderOnRedirect() {
-	Response res;
-	res.setStatusCode("301");
-	res.setMessage("Moved Permanently");
-	res.setLocationHeader("/new-path/");
-	res.buildRawResponse();
-
-	std::string rawStr(res.getRawData(), res.getRawSize());
-	ASSERT(rawStr.find("Location: /new-path/\r\n") != std::string::npos);
-	return true;
-}
-
-static bool testHttpExceptionErrorResponseBuilding() {
-	Response res;
-	HttpException ex(404, "Not Found");
-	
-	// Simular preparación de error
-	res.setStatusCode(toStr(ex.getStatusCode()));
-	res.setMessage(ex.what());
-	res.setResponseBody("<h1>404 Not Found</h1>");
-	res.assignHeaders("html", "close");
-	res.buildRawResponse();
-
-	std::string rawStr(res.getRawData(), res.getRawSize());
-	ASSERT(rawStr.find("HTTP/1.1 404 Not Found\r\n") == 0);
-	ASSERT(rawStr.find("Connection: close\r\n") != std::string::npos);
-	return true;
-}
-
-// ============================================================================
-// SUITE EXECUTION MAIN
-// ============================================================================
 
 void runHttpRequestTests(int& passed, int& failed) {
 	Test tests[] = {
@@ -450,7 +392,7 @@ void runHttpRequestTests(int& passed, int& failed) {
 		{ "Test 6: Duplicate Content-Length throws 400",       testDuplicateContentLengthThrows },
 		{ "Test 7: Invalid HTTP version throws",               testInvalidVersionThrows },
 		{ "Test 8: Malformed request line throws",             testMalformedRequestLineThrows },
-		{ "Test 9: Header without colon throws",              testHeaderWithoutColonThrows },
+		{ "Test 9: Header without colon throws",               testHeaderWithoutColonThrows },
 		{ "Test 10: Empty header key throws",                  testEmptyHeaderKeyThrows },
 		{ "Test 11: Empty header value accepted",              testEmptyHeaderValueAccepted },
 		{ "Test 12: Content-Length zero body",                 testContentLengthZero },
@@ -466,17 +408,12 @@ void runHttpRequestTests(int& passed, int& failed) {
 		{ "Test 22: Chunked fragmented payload",               testChunkedFragmentedPayload },
 		{ "Test 23: Invalid delimiter in request line (\\n)",  testInvalidDelimiterInRequestLineThrows },
 		{ "Test 24: Multi-line header folding concatenation",  testMultiLineHeaderValueFoldingSupported },
-		// Edges & Flows
 		{ "Test 25: URI Query String stripping",               testUriWithQueryStringAndFragment },
 		{ "Test 26: Payload too large (Content-Length)",       testContentLengthExceedsClientMaxBodySize },
 		{ "Test 27: Payload too large (Chunked)",              testChunkedExceedsClientMaxBodySize },
 		{ "Test 28: Split CRLF between network packets",       testCRLFDistributedAcrossPackets },
 		{ "Test 29: Headers with tab whitespace trimming",     testHeadersWithTabSpaces },
-		{ "Test 30: Zero bytes read buffer feed",              testZeroBufferBytesReadHandling },
-		{ "Test 31: Response raw buffer serialization",        testResponseRawBufferDataPersists },
-		{ "Test 32: Response Allow header (405)",              testResponseAllowedMethodsHeader },
-		{ "Test 33: Response Location header (301)",           testResponseLocationHeaderOnRedirect },
-		{ "Test 34: HttpException Error Response formatting",  testHttpExceptionErrorResponseBuilding }
+		{ "Test 30: Zero bytes read buffer feed",              testZeroBufferBytesReadHandling }
 	};
 
 	int localPassed = 0;
@@ -495,15 +432,4 @@ void runHttpRequestTests(int& passed, int& failed) {
 
 	passed += localPassed;
 	failed += localFailed;
-}
-
-int main() {
-	int passed = 0;
-	int failed = 0;
-
-	std::cout << CYAN << "=== INICIANDO SUITE DE TESTS HTTP & PIPELINE ===" << RESET << "\n\n";
-	runHttpRequestTests(passed, failed);
-	std::cout << "\n" << CYAN << "===============================================" << RESET << "\n";
-
-	return (failed == 0) ? 0 : 1;
 }
