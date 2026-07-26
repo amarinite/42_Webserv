@@ -17,11 +17,11 @@
 class CgiHandler
 {
 	private:
-		void			validateCgiPaths(const std::string& scriptPath, const std::string& execPath);
-		char**			envArrayFromMap(const std::map<std::string, std::string>& env);
+		static void			validateCgiPaths(const std::string& scriptPath, const std::string& execPath);
+		static char**		envArrayFromMap(const std::map<std::string, std::string>& env);
 
 	public:
-		static bool		canHandleCgi(const t_uri& uri, const LocationConfig& conf);
-		static char**	buildCgiEnv(const Request& req, const ServerConfig& conf, const std::string& ip);
-		static void		freeCgiEnv(char** envp);
+		static bool			canHandleCgi(const t_uri& uri, const LocationConfig& conf);
+		static char**		buildCgiEnv(const Request& req, const ServerConfig& conf, const std::string& ip);
+		static void			freeCgiEnv(char** envp);
 };

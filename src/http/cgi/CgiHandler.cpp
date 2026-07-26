@@ -1,27 +1,5 @@
 #include "CgiHandler.hpp"
 
-bool CgiHandler::canHandleCgi(const t_uri& uri, const LocationConfig& conf)
-{
-	// No cgi_extension directive configured in the matching location block.
-	if (!conf.hasCgi())
-		return false;
-
-	std::string fileExt = findFileExtension(uri.path);
-	// Path is a directory: A request for /cgi-bin/ (where your server might check for an index directive or autoindex instead).
-	if (fileExt.empty())
-		return false;
-
-	// Extension mismatch: The location has cgi_extension .py, but the request is for /cgi-bin/logo.png or /index.html.
-	std::map<std::string, std::string>& cgiExt = getCgiExtension();
-	if (cgiExt.count(fileExt) == 0)
-		return false;
-
-	std::string scriptPath = conf.getRoot() + uri.path;
-	validateCgiPaths(scriptPath, cgiExt[fileExt]);
-
-	return true;
-}
-
 void CgiHandler::validateCgiPaths(const std::string& scriptPath, const std::string& execPath)
 {
 	// Script file does not exist
@@ -41,13 +19,35 @@ void CgiHandler::validateCgiPaths(const std::string& scriptPath, const std::stri
 		throw HttpException(500, "Interpreter not executable");
 }
 
+bool CgiHandler::canHandleCgi(const t_uri& uri, const LocationConfig& conf)
+{
+	// No cgi_extension directive configured in the matching location block.
+	if (!conf.hasCgi())
+		return false;
+
+	std::string fileExt = findFileExtension(uri.path);
+	// Path is a directory: A request for /cgi-bin/ (where your server might check for an index directive or autoindex instead).
+	if (fileExt.empty())
+		return false;
+
+	// Extension mismatch: The location has cgi_extension .py, but the request is for /cgi-bin/logo.png or /index.html.
+	std::map<std::string, std::string>& cgiExt = conf.getCgiExtension();
+	if (cgiExt.count(fileExt) == 0)
+		return false;
+
+	std::string scriptPath = conf.getRoot() + uri.path;
+	validateCgiPaths(scriptPath, cgiExt[fileExt]);
+
+	return true;
+}
+
 char** CgiHandler::buildCgiEnv(const Request& req, const ServerConfig& conf, const std::string& ip)
 {
 	 std::map<std::string, std::string> env;
 
 	env["GATEWAY_INTERFACE"] = "CGI/1.1";
 	env["SERVER_SOFTWARE"] = "Group de Afectadous by Taha";
-	env["SERVER_NAME"] = servConf.getListen().host; // Get it from servConf
+	env["SERVER_NAME"] = conf.getListen().host; // Get it from servConf
 	env["SERVER_PROTOCOL"] = "HTTP/1.1";
 	env["SERVER_PORT"] = numberToString(servConf.getListen().port); // Get it from servConf
 	env["REQUEST_METHOD"] = req.getMethod();
