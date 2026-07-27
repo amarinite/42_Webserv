@@ -21,14 +21,15 @@ enum State {
 
 class Http {
 	private:
-		std::string		_rawBuff;
-		size_t			_rawBuffSize;
-		State			_status;
-		Request			_request;
-		Response 		_response;
-		ServerConfig&	_sConfig;
-		Processor*		_processor;
-		CgiExecutor*	_cgi;
+		std::string			_rawBuff;
+		size_t				_rawBuffSize;
+		State				_status;
+		Request				_request;
+		Response 			_response;
+		const ServerConfig	&_sConfig;
+		Processor			*_processor;
+		CgiExecutor			*_cgi;
+		std::string			_clientIp;
 		
 		//Functs
 		void addLeftover(std::string &rawBuff, size_t &rawBuffSize);
@@ -36,17 +37,17 @@ class Http {
 		bool methodGetCase();
 
 		void startProcessing();
+		void startCgi();
 		void finishWithError(const HttpException& e);
 
 	public:
-		// Http();
-		Http(ServerConfig &sc);
-		// Http(const Http &other);
-		// Http &operator=(const Http &other);
+		Http(const ServerConfig &sc);
 		~Http();
 
 		//Functs
 		void HttpRoutine(char *buff, size_t bytesRead);
+		void setClientIp(const std::string &ip);
+		bool checkCgiTimeout(double timeoutSeconds);
 
 		void onCgiWritable();
 		void onCgiReadable();
@@ -58,5 +59,7 @@ class Http {
 		State getStatus() const;
 		const Request &getRequest() const;
 		Request &getRequest();
+		const Response &getResponse() const;
+		Response &getResponse();
 };
 

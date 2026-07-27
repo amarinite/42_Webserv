@@ -103,7 +103,7 @@ void LocationConfig::setIndex(const Node* n)
 		_index.push_back(n->args[i]);
 }
 
-bool LocationConfig::hasAutoindex() const
+bool LocationConfig::hasAutoIndex() const
 {
 	return _autoindex;
 }

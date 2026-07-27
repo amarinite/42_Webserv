@@ -1,4 +1,13 @@
 #include "Processor.hpp"
+#include "HttpRequest.hpp"
+#include "HttpResponse.hpp"
+#include "LocationConfig.hpp"
+#include "FileUtils.hpp"
+
+#include <sys/stat.h>
+#include <fstream>
+#include <dirent.h>
+
 /**
  * @brief Construct a new Processor:: Processor object
  * 
@@ -6,8 +15,15 @@
  * @param lc LocationConfig info
  * @param res Empty Response to store results.
  */
-Processor::Processor(Request &req, LocationConfig &lc, Response &res)
-	: _cgiRequested(false), _lc(lc), _req(req), _res(res) {}
+Processor::Processor(Request &req, Response &res, const LocationConfig &lc)
+	: _cgiRequested(false), _req(req), _res(res), _lc(lc) {}
+
+// Processor &Processor::operator=(const Processor &p) {
+// 	if (this != &a) {
+// 		_req = p._req;
+// 		_lc = p._lc;
+// 	}
+// }
 
 /**
  * @brief Concatenates root directory with the requested directory
@@ -69,9 +85,9 @@ void Processor::convertFileExtension(const std::string &ext) {
  * @throws HttpException 500 if ti fails creating th file.
  */
 void Processor::createFile() {
-	std::ofstream newFile(_fullPath);
+	std::ofstream newFile(_fullPath.c_str());
 	if (newFile.is_open()) {
-		newFile << _requestBody;
+		newFile << _req.getBody();
 		newFile.close();
 	} else
 		throw HttpException(500, "Internal Server Error: error creating file.");
@@ -105,9 +121,9 @@ bool Processor::findIndexPage() {
  * 
  * @return const std::string validated path.
  */
-const std::string Processor::requestPath() {
-	validateDir(_req._uri.path);
-	return _req._uri.path;
+const std::string Processor::requestPath() const {
+	validateDir(_req.getPath());
+	return _req.getPath();
 }
 
 /**
@@ -118,10 +134,10 @@ const std::string Processor::requestPath() {
  * @throws HttpException 500 if error of opendir.
  */
 void Processor::doAutoIndex() {
-	if (!_lc.hasAutoindex())
+	if (!_lc.hasAutoIndex())
 		throw HttpException(403, "Forbidden");
 
-	DIR *folder = opendir(_fullpath.c_str());
+	DIR *folder = opendir(_fullPath.c_str());
 	if (folder == NULL) {
 		if (errno == EACCES)
 			throw HttpException(403, "Forbidden");
@@ -130,8 +146,9 @@ void Processor::doAutoIndex() {
 		else
 			throw HttpException(500, "Internal Server Error");
 	}
-	std::stringstream html;
+
 	std::string path = requestPath();
+	std::stringstream html;
 
 	html << "<html>\n<head><title>Index of " << path << "</title></head>\n";
 	html << "<body style=\"font-family: sans-serif; padding: 20px;\">\n";
@@ -153,20 +170,20 @@ void Processor::doAutoIndex() {
  * @brief Unifies de functions of GET method and sets the Status code and message.
  */
 void Processor::handleGet() {
-	bool isDir = validatePathDir();
+	bool isDir = validatePathDir(_fullPath);
 
 	if (!isDir) {
-			_extension = findFileExtension(_fullpath);
-			_responseBody = readFile(_fullpath);
+			_extension = findFileExtension(_fullPath);
+			_responseBody = readFile(_fullPath);
 	}
 	else {
 		if (findIndexPage()) {
-			_extension = findFileExtension(_fullpath);
-			_responseBody = readFile(_fullpath);
+			_extension = findFileExtension(_fullPath);
+			_responseBody = readFile(_fullPath);
 		} else
 			doAutoIndex();
 	}
-	_code = 200;
+	_code = "200";
 	_codeMsg = "Ok";
 }
 
@@ -186,14 +203,14 @@ void Processor::handleGet() {
 void Processor::handleDelete() {
 	validateFile(_fullPath);
 	removeFile(_fullPath);
-	_code = 204;
+	_code = "204";
 	_codeMsg = "No Content";
 	_responseBody.clear();
 }
 
 bool Processor::isValidMethod() {
 	const std::vector<std::string> &methods = _lc.getAllowedMethods();
-	std::vector<std::string>::iterator it = methods.begin();
+	std::vector<std::string>::const_iterator it = methods.begin();
 	for (; it != methods.end(); ++it) {
 		if (*it == _req.getMethod())
 			return true;
@@ -201,7 +218,7 @@ bool Processor::isValidMethod() {
 	return false;
 }
 
-static std::string findAllowedMethods(std::vector<std::string>& allowed) {
+static std::string findAllowedMethods(const std::vector<std::string> &allowed) {
 	std::ostringstream oss;
 	for (size_t i = 0; i < allowed.size(); ++i) {
 		if (i != 0)
@@ -220,7 +237,7 @@ static std::string findAllowedMethods(std::vector<std::string>& allowed) {
 void Processor::processorRoutine() {
 	_fullPath = concatPaths(_lc.getRoot(), _req.getPath());
 	if (!isValidMethod()) {
-		throw HttpException(405, "Method Not Allowed", findAllowedMethods(getAllowedMethods()));
+		throw HttpException(405, "Method Not Allowed", findAllowedMethods(_lc.getAllowedMethods()));
 	}
 	// Redirect
 	// CGI
@@ -231,8 +248,8 @@ void Processor::processorRoutine() {
 
 	if (_req.getMethod() == "GET")
 		handleGet();
-	else if (_req.getMethod() ==  "POST")
-		handlePost();
+	// else if (_req.getMethod() ==  "POST")
+		// handlePost();
 	else if (_req.getMethod() ==  "DELETE")
 		handleDelete();
 	else
@@ -263,7 +280,47 @@ const std::string &Processor::getCgiExecPath() const {
 }
 
 void Processor::consumeCgiOutput(const std::string &rawCgiOutput) {
-	//TODO
+	size_t sepLen = 4;
+	size_t headerEnd = rawCgiOutput.find("\r\n\r\n");
+	if (headerEnd == std::string::npos) {
+		sepLen = 2;
+		headerEnd = rawCgiOutput.find("\n\n");
+	}
+	if (headerEnd == std::string::npos)
+		throw HttpException(502, "Bad Gateway: Malformed CGI Output");
+
+	std::string headerBlock = rawCgiOutput.substr(0, headerEnd);
+	_responseBody = rawCgiOutput.substr(headerEnd + sepLen);
+
+	_code = "200";
+	_codeMsg = "OK";
+
+	std::istringstream stream(headerBlock);
+	std::string line;
+	while (std::getline(stream, line)) {
+		if (!line.empty() && line[line.size() - 1] == '\r')
+			line.erase(line.size() - 1);
+		if (line.empty())
+			continue;
+		size_t colon = line.find(':');
+		if (colon == std::string::npos)
+			continue;
+		std::string key = line.substr(0, colon);
+		std::string value = line.substr(colon + 1);
+		size_t firstNonSpace = value.find_first_not_of(' ');
+		if (firstNonSpace != std::string::npos)
+			value = value.substr(firstNonSpace);
+
+		if (key == "Status") {
+			_code = value.substr(0, 3);
+			_codeMsg = value.size() > 4 ? value.substr(4) : "";
+		} else if (key == "Location") {
+			_redirectPath = value;
+			if (_code == "200") { _code = "302"; _codeMsg = "Found"; }
+		} else {
+			_res.addRawHeader(key, value);
+		}
+	}
 }
 
 /**
@@ -277,7 +334,7 @@ void Processor::prepareResponse() {
 		_res.setResponseBody(_responseBody);
 
 	if (_cgiRequested)
-		_res.assignConnectionAndLengthHeaders(_req.getConnection()); // Connection + Content-Length only
+		_res.assignConnectionAndLengthHeaders(_req.getConnection());
 	else
 		_res.assignHeaders(_extension, _req.getConnection());
 
@@ -293,7 +350,7 @@ void Processor::prepareResponse() {
  * 
  * @return std::string The fullPath variable.
  */
-std::string Processor::getFullPath() {
+const std::string &Processor::getFullPath() const {
 	return _fullPath;
 }
 
@@ -302,7 +359,7 @@ std::string Processor::getFullPath() {
  * 
  * @return std::string The Extension variable.
  */
-std::string Processor::getExtension() {
+const std::string &Processor::getExtension() const {
 	return _extension;
 }
 
@@ -311,7 +368,7 @@ std::string Processor::getExtension() {
  * 
  * @return std::string The Response Body variable.
  */
-std::string Processor::getResponseBody() {
+const std::string &Processor::getResponseBody() const {
 	return _responseBody;
 }
 
@@ -320,6 +377,6 @@ std::string Processor::getResponseBody() {
  * 
  * @return std::string The Status Code variable.
  */
-std::string Processor::getStatusCode() {
+const std::string &Processor::getStatusCode() const {
 	return _code;
 }

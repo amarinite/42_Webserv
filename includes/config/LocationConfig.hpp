@@ -35,7 +35,7 @@ class LocationConfig
 		static LocationConfig						build(Node* locationNode, const ServerConfig& parent);
 		static LocationConfig						buildDefault(const ServerConfig& parent);
 
-		bool										hasAutoindex() const;
+		bool										hasAutoIndex() const;
 		bool										hasUploadEnabled() const;
 		bool										hasCgi() const;
 
