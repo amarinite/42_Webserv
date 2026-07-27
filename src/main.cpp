@@ -30,6 +30,7 @@ int main(int argc, char** argv)
 
 		Config config = Config::build(tree);
 		delete tree;
+		tree = NULL;
 
 		ServerManager manager(config);
 		manager.run();

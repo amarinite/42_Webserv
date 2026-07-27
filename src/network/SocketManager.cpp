@@ -72,13 +72,12 @@ void SocketManager::addToPoll(int fd)
 	_pollFds.push_back(newPfd);
 }
 
-void SocketManager::handleNewConnection()
+void SocketManager::handleNewConnection(int listenerFd)
 {
 	struct sockaddr_storage clientAddr;
 	socklen_t addrLen = sizeof(clientAddr);
 
-	int clientFd = accept(_listener.getFD(), (struct sockaddr*)&clientAddr, &addrLen);
-
+	int clientFd = accept(listenerFd, (struct sockaddr*)&clientAddr, &addrLen);
 	if (clientFd < 0)
 		return;
 
@@ -87,24 +86,53 @@ void SocketManager::handleNewConnection()
 
 	_clients.push_back(client);
 	addToPoll(clientFd);
-
-	std::cout << "Nuevos clientes, fd " << clientFd << std::endl;
+	_requests[clientFd] = new Request();
+	_clientConfig[clientFd] = _listenerConfig[listenerFd];
+	std::cout << "Nuevos cliente, fd " << clientFd << std::endl;
 }
 
 void SocketManager::handleClientData(size_t pollIndex)
 {
 	int fd = _pollFds[pollIndex].fd;
 	char buffer[1024];
-
 	ssize_t bytes = recv(fd, buffer, sizeof(buffer), 0);
-
 	if (bytes <= 0)
 	{
 		disconnectClient(pollIndex);
 		return;
 	}
-
-	std::cout << "Recibidos " << bytes << " bytes del fd " << fd << std::endl;
+	Request *req = _requests[fd];
+	req->_stream = req->_leftover + std::string(buffer, bytes);
+	req->_leftover.clear();
+	try
+	{
+		while (true)
+		{
+			if (!req->parseRequestHead())
+				break;
+			if (!req->parseRequestBody())
+				break;
+			std::cout << "--- Request completa de fd " << fd
+					<< " metodo: " << req->getMethod() << " ---" << std::endl;
+			std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK";
+			send(fd, response.c_str(), response.size(), 0);
+			std::string leftover = req->_leftover;
+			resetRequest(fd);
+			req = _requests[fd];
+			req->_stream = leftover;
+			if (req->_stream.empty())
+				break;
+		}
+	}
+	catch(const HttpException &e)
+	{
+		std::ostringstream oss;
+		std::string body = e.what();
+		oss << "HTTP/1.1 " << e.getStatusCode() << " Error\r\nContent-Length: "
+            << body.size() << "\r\n\r\n" << body;
+		send (fd, oss.str().c_str(), oss.str().size(), 0);
+		disconnectClient(pollIndex);
+	}
 }
 
 void SocketManager::disconnectClient(size_t pollIndex)
@@ -120,9 +148,17 @@ void SocketManager::disconnectClient(size_t pollIndex)
 			break;
 		}
 	}
-
+	delete _requests[fd];
+	_requests.erase(fd);
+	_clientConfig.erase(fd);
 	_pollFds.erase(_pollFds.begin() + pollIndex);
 
 	std::cout << "Cliente desconectado, fd: " << fd << std::endl;
 
+}
+
+void SocketManager::resetRequest(int fd)
+{
+	delete _requests[fd];
+	_requests[fd] = new Request();
 }
