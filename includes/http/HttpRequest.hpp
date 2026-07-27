@@ -84,7 +84,7 @@ class Request {
 		std::string			getLeftover();
 		std::string			getConnection() const;
 		const t_uri			&getUri() const;
-		const std::map<std::string, std::string>  getHeaders() const;
+		const std::map<std::string, std::string>&  getHeaders() const;
 
 		void setStream(const std::string &stream);
 

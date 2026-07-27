@@ -49,9 +49,9 @@ static bool testServerConfigDirectives()
 	ServerConfig config = ServerConfig::build(serverNode);
 	delete serverNode;
 
-	ASSERT(config.getListen().size() == 1);
-	ASSERT(config.getListen()[0].host == "0.0.0.0");
-	ASSERT(config.getListen()[0].port == 8080);
+	ASSERT(config.getListenVector().size() == 1);
+	ASSERT(config.getListenVector()[0].host == "0.0.0.0");
+	ASSERT(config.getListenVector()[0].port == 8080);
 	ASSERT(config.getRoot() == "/var/www");
 	ASSERT(config.getIndex()[0] == "main.html");
 	ASSERT(config.getClientMaxBodySize() == 2048);
@@ -98,13 +98,13 @@ static bool testServerConfigMultipleListenArgs()
 	ServerConfig config = ServerConfig::build(serverNode);
 	delete serverNode;
 
-	ASSERT(config.getListen().size() == 3);
-	ASSERT(config.getListen()[0].host == "0.0.0.0");
-	ASSERT(config.getListen()[0].port == 80);
-	ASSERT(config.getListen()[1].host == "0.0.0.0");
-	ASSERT(config.getListen()[1].port == 443);
-	ASSERT(config.getListen()[2].host == "127.0.0.1");
-	ASSERT(config.getListen()[2].port == 8080);
+	ASSERT(config.getListenVector().size() == 3);
+	ASSERT(config.getListenVector()[0].host == "0.0.0.0");
+	ASSERT(config.getListenVector()[0].port == 80);
+	ASSERT(config.getListenVector()[1].host == "0.0.0.0");
+	ASSERT(config.getListenVector()[1].port == 443);
+	ASSERT(config.getListenVector()[2].host == "127.0.0.1");
+	ASSERT(config.getListenVector()[2].port == 8080);
 
 	return true;
 }
