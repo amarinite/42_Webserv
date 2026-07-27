@@ -19,13 +19,15 @@ const ServerConfig& Config::getServer(const ListenAddr& ipPort) const
 {
 	for (size_t i = 0; i < _servers.size(); i++)
 	{
-		for (size_t j = 0; j < _servers[i].getListen().size(); j++)
+		const std::vector<ListenAddr>& addrs = _servers[i].getListenVector();
+		for (size_t j = 0; j < addrs.size(); j++)
 		{
-			if (ipPort == _servers[i].getListen()[j])
+			if (ipPort == addrs[j])
 				return _servers[i];
 		}
 	}
 
 	// IS THIS POSSIBLE? PREGUNTAR ISAAC
+	// No se (?
 	throw std::runtime_error("Config::getServer: no server for given ip:port");
 }

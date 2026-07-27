@@ -1,21 +1,15 @@
 #pragma once
 
 #include <string>
+#include <map>
 
 #include "ServerConfig.hpp"
 #include "HttpRequest.hpp"
-<<<<<<< HEAD
 #include "HttpException.hpp"
 #include "HttpResponse.hpp"
 #include "CgiExecutor.hpp"
-#include "ServerConfig.hpp"
 #include "Processor.hpp"
-=======
-#include "Processor.hpp"
-#include "HttpResponse.hpp"
-
-
->>>>>>> 18-http-general
+#include "CgiHandler.hpp"
 
 enum State {
 	READING_HEADERS,
@@ -38,7 +32,7 @@ class Http {
 		Processor			*_processor;
 		CgiExecutor			*_cgi;
 		std::string			_clientIp;
-		
+
 		// IP!!!!!!!!!!!!!!!!!!!
 
 		//Functs
@@ -64,7 +58,7 @@ class Http {
 		bool isWaitingOnCgi() const;
 		int  getCgiWriteFd() const;
 		int  getCgiReadFd() const;
-		
+
 		//Getters
 		State getStatus() const;
 		const Request &getRequest() const;

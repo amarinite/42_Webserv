@@ -18,7 +18,7 @@ void SocketManager::setup(const std::vector<ServerConfig> &configs)
 {
 	for (size_t i = 0; i < configs.size(); i++)
 	{
-		const std::vector <ListenAddr> &addrs = configs[i].getListen();
+		const std::vector <ListenAddr> &addrs = configs[i].getListenVector();
 
 		for (size_t j = 0; j < addrs.size(); j++)
 		{
@@ -42,10 +42,10 @@ void SocketManager::setup(const std::vector<ServerConfig> &configs)
 
 void SocketManager::run()
 {
-	// CONTROLAR CGI: 
+	// CONTROLAR CGI:
 	// for writing (POLLOUT) -> Call CgiExecutor::handleWriteEvent()
 	// for reading (POLLIN) -> Call CgiExecutor::handleReadEvent()
-	// Check for both POLLIN and POLLOUT, and route events based on what type of file descriptor 
+	// Check for both POLLIN and POLLOUT, and route events based on what type of file descriptor
 	// _pollFds[i].fd actually is (listener socket, client socket, CGI read pipe, or CGI write pipe)
 	while (true)
 	{
@@ -90,9 +90,9 @@ void SocketManager::handleNewConnection(int listenerFd)
 	client->setNonBlocking();
 
 	_clients.push_back(client);
-	addToPoll(clientFd);
-	_requests[clientFd] = new Request();
 	_clientConfig[clientFd] = _listenerConfig[listenerFd];
+	addToPoll(clientFd);
+	_requests[clientFd] = new Request(_clientConfig[clientFd]->getClientMaxBodySize());
 	std::cout << "Nuevos cliente, fd " << clientFd << std::endl;
 }
 
@@ -107,8 +107,8 @@ void SocketManager::handleClientData(size_t pollIndex)
 		return;
 	}
 	Request *req = _requests[fd];
-	req->_stream = req->_leftover + std::string(buffer, bytes);
-	req->_leftover.clear();
+	req->setStream(req->getLeftover() + std::string(buffer, bytes));
+	req->clearLeftover();
 	try
 	{
 		while (true)
@@ -121,11 +121,11 @@ void SocketManager::handleClientData(size_t pollIndex)
 					<< " metodo: " << req->getMethod() << " ---" << std::endl;
 			std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK";
 			send(fd, response.c_str(), response.size(), 0);
-			std::string leftover = req->_leftover;
+			std::string leftover = req->getLeftover();
 			resetRequest(fd);
 			req = _requests[fd];
-			req->_stream = leftover;
-			if (req->_stream.empty())
+			req->setStream(leftover);
+			if (leftover.empty())
 				break;
 		}
 	}
@@ -165,5 +165,5 @@ void SocketManager::disconnectClient(size_t pollIndex)
 void SocketManager::resetRequest(int fd)
 {
 	delete _requests[fd];
-	_requests[fd] = new Request();
+	_requests[fd] = new Request(_clientConfig[fd]->getClientMaxBodySize());
 }
