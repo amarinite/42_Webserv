@@ -35,10 +35,10 @@ class Response {
 		void		assignErrorBody(const size_t &statusCode, const std::map<int, std::string> &error_pages);
 		void		errorBody(const std::string &statusCode, const std::string &errorDir);
 		void		buildRawResponse();
-		void		prepareErrorResponse(const std::map<int, std::string> &error_pages, const HttpException &ex);		
+		void		prepareErrorResponse(const std::map<int, std::string> &error_pages, const HttpException &ex);
 		void		addRawHeader(const std::string &key, const std::string &value);
 		void		assignConnectionAndLengthHeaders(const std::string &connection);
-		
+
 		// Setters
 		void		setStatusCode(const std::string &code);
 		void		setMessage(const std::string &msg);

@@ -66,7 +66,7 @@ void Response::errorBody(const std::string &statusCode, const std::string &error
 void Response::assignErrorBody(const size_t &statusCode, const std::map<int, std::string> &error_pages) {
 	if (statusCode > 399) {
 		std::map<int, std::string>::const_iterator it = error_pages.find(static_cast<int>(statusCode));
-		
+
 		if (it != error_pages.end())
 			errorBody(toStr(statusCode), it->second);
 	}
@@ -81,7 +81,7 @@ void Response::buildRawResponse() {
 	}
 	oss << "\r\n";
 	if (!_responseBody.empty())
-		oss << _responseBody;	
+		oss << _responseBody;
 	std::string fullResponse = oss.str();
 	_rawResponse.assign(fullResponse.begin(), fullResponse.end());
 }
@@ -101,12 +101,12 @@ void Response::buildRawResponse() {
 static std::string setErrorConnection(const int &code) {
 	if (code == 400 || code == 413 || code > 499 || !exceptConnection)
 		return "close";
-	else 
+	else
 		return "keep-alive";
 }
 
 // conf.getErrorPages()
-void	Response::prepareErrorResponse(const std::map<int, std::string> &error_pages, HttpException &ex) {
+void	Response::prepareErrorResponse(const std::map<int, std::string> &error_pages, const HttpException &ex) {
 	std::string strStatusCode = toStr(ex.getStatusCode());
 
 	setStatusCode(strStatusCode);
@@ -116,6 +116,18 @@ void	Response::prepareErrorResponse(const std::map<int, std::string> &error_page
 	if (ex.getStatusCode() == 405)
 		setAllowedMethodsHeader(ex.getMethods());
 	buildRawResponse();
+}
+
+void Response::addRawHeader(const std::string &key, const std::string &value) {
+	_headers[key] = value;
+}
+
+void Response::assignConnectionAndLengthHeaders(const std::string &connection) {
+	_headers["Server"] = "Group de Afectadous by Taha";
+	_headers["Date"] = getTime();
+	_headers["Connection"] = connection;
+	if (!_responseBody.empty())
+		_headers["Content-Length"] = toStr(_responseBody.size());
 }
 
 // Setters.

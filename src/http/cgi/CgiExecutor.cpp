@@ -1,13 +1,12 @@
 #include "CgiExecutor.hpp"
 
 CgiExecutor::CgiExecutor()
-	: _pid(-1), _startTime(0), _isFinished(false),
-	  _bodyToWrite(), _outputRead()
+    : _pid(-1), _startTime(0), _bodyToWrite(), _outputBuffer(), _isFinished(false)
 {
-	_pipeIn[0] = -1;
-	_pipeIn[1] = -1;
-	_pipeOut[0] = -1;
-	_pipeOut[1] = -1;
+    _pipeIn[0] = -1;
+    _pipeIn[1] = -1;
+    _pipeOut[0] = -1;
+    _pipeOut[1] = -1;
 }
 
 CgiExecutor::~CgiExecutor()
@@ -134,7 +133,7 @@ void CgiExecutor::handleReadEvent()
 
 	if (bytesRead > 0)
 	{
-		_outputRead.append(buffer, bytesRead);
+		_outputBuffer.append(buffer, bytesRead);
 	}
 	else if (bytesRead == 0) // EOF reached (CGI script finished writing)
 	{
@@ -153,7 +152,7 @@ void CgiExecutor::handleReadEvent()
 	}
 }
 
-bool CgiExecutor::checkTimeout(double timeoutSeconds)
+bool CgiExecutor::checkTimeout(time_t timeoutSeconds)
 {
 	if (_isFinished)
 		return false;
@@ -186,5 +185,5 @@ int CgiExecutor::getReadFd() const
 
 const std::string& CgiExecutor::getOutput() const
 {
-	return _outputRead;
+	return _outputBuffer;
 }

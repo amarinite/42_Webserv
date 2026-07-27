@@ -7,9 +7,9 @@
 #include "HttpRequest.hpp"
 #include "HttpException.hpp"
 #include "HttpResponse.hpp"
-#include "CgiExecutor.hpp"
+#include "cgi/CgiExecutor.hpp"
 #include "Processor.hpp"
-#include "CgiHandler.hpp"
+#include "cgi/CgiHandler.hpp"
 
 enum State {
 	READING_HEADERS,
@@ -43,6 +43,7 @@ class Http {
 		void startProcessing();
 		void startCgi();
 		void finishWithError(const HttpException& e);
+		void buildResponse(const HttpException &e);
 
 	public:
 		Http(const ServerConfig &sc);

@@ -10,13 +10,13 @@
 
 /**
  * @brief Construct a new Processor:: Processor object
- * 
+ *
  * @param req Http Request Info
  * @param lc LocationConfig info
  * @param res Empty Response to store results.
  */
 Processor::Processor(Request &req, Response &res, const LocationConfig &lc)
-	: _cgiRequested(false), _req(req), _res(res), _lc(lc) {}
+	: _cgiRequested(false), _lc(lc), _req(req), _res(res) {}
 
 // Processor &Processor::operator=(const Processor &p) {
 // 	if (this != &a) {
@@ -27,15 +27,15 @@ Processor::Processor(Request &req, Response &res, const LocationConfig &lc)
 
 /**
  * @brief Concatenates root directory with the requested directory
- * 
+ *
  * @param root Base directory of the Processor.
  * @param path New directory extracted from the HTTP request.
  * @returns std::stirng with concatenated paths.
  */
 static std::string concatPaths(const std::string &root, const std::string &path) {
-	if (root.empty()) 
+	if (root.empty())
 		return path;
-	if (path.empty()) 
+	if (path.empty())
 		return root;
 
 	bool rootHasSlash = (root[root.length() - 1] == '/');
@@ -43,7 +43,7 @@ static std::string concatPaths(const std::string &root, const std::string &path)
 
 	if (!rootHasSlash && !pathHasSlash)
 		return root + "/" + path;
-	
+
 	if (rootHasSlash && pathHasSlash)
 		return root + path.substr(1);
 	return root + path;
@@ -51,7 +51,7 @@ static std::string concatPaths(const std::string &root, const std::string &path)
 
 /**
  * @brief Checks if the extension is valid.
- * 
+ *
  * @param ext extension to verify.
  */
 void Processor::convertFileExtension(const std::string &ext) {
@@ -81,7 +81,7 @@ void Processor::convertFileExtension(const std::string &ext) {
 
 /**
  * @brief Creates a file and fill it with the body parsed in the Http Request.
- * 
+ *
  * @throws HttpException 500 if ti fails creating th file.
  */
 void Processor::createFile() {
@@ -95,7 +95,7 @@ void Processor::createFile() {
 
 /**
  * @brief checks for multiple index pages and returns de first that exists.
- * 
+ *
  * @return true If a valid index file is found.
  * @return false If no configured index exists or is inaccesible.
  */
@@ -117,8 +117,8 @@ bool Processor::findIndexPage() {
 }
 
 /**
- * @brief Validates directory permissions. 
- * 
+ * @brief Validates directory permissions.
+ *
  * @return const std::string validated path.
  */
 const std::string Processor::requestPath() const {
@@ -128,7 +128,7 @@ const std::string Processor::requestPath() const {
 
 /**
  * @brief Creates the autoindex page.
- * 
+ *
  * @throws HttpException 403 if user has no permits.
  * @throws HttpException 404 if directory doesnt exist.
  * @throws HttpException 500 if error of opendir.
@@ -157,13 +157,13 @@ void Processor::doAutoIndex() {
 	struct dirent *content;
 	while ((content = readdir(folder)) != NULL)
 		html << "<li>" << content->d_name << "</li>\n";
-	
+
 	closedir(folder);
 
 	html << "</ul>\n<hr>\n</body>\n</html>";
 
 	_responseBody = html.str();
-	
+
 }
 
 /**
@@ -231,8 +231,8 @@ static std::string findAllowedMethods(const std::vector<std::string> &allowed) {
 // Routine
 /**
  * @brief Derives the processing of the request to a handler depending on the Method.
- * 
- * @param method Method extracted in the Parse of the Http Request. 
+ *
+ * @param method Method extracted in the Parse of the Http Request.
  */
 void Processor::processorRoutine() {
 	_fullPath = concatPaths(_lc.getRoot(), _req.getPath());
@@ -267,15 +267,15 @@ void Processor::prepareCgi() {
 	_cgiRequested = true;
 }
 
-bool Processor::wantsCgi() const { 
+bool Processor::wantsCgi() const {
     return _cgiRequested;
 }
 
-const std::string &Processor::getCgiScriptPath() const { 
+const std::string &Processor::getCgiScriptPath() const {
     return _cgiScriptPath;
 }
 
-const std::string &Processor::getCgiExecPath() const { 
+const std::string &Processor::getCgiExecPath() const {
     return _cgiExecPath;
 }
 
@@ -325,7 +325,7 @@ void Processor::consumeCgiOutput(const std::string &rawCgiOutput) {
 
 /**
  * @brief assigns headers and builds Http Response.
- * 
+ *
  */
 void Processor::prepareResponse() {
 	_res.setStatusCode(_code);
@@ -347,7 +347,7 @@ void Processor::prepareResponse() {
 // Getters.
 /**
  * @brief Getter to full path variable saved in the object.
- * 
+ *
  * @return std::string The fullPath variable.
  */
 const std::string &Processor::getFullPath() const {
@@ -356,7 +356,7 @@ const std::string &Processor::getFullPath() const {
 
 /**
  * @brief Getter to the extension variable saved in the object.
- * 
+ *
  * @return std::string The Extension variable.
  */
 const std::string &Processor::getExtension() const {
@@ -365,7 +365,7 @@ const std::string &Processor::getExtension() const {
 
 /**
  * @brief Getter to the body variable saved in the object.
- * 
+ *
  * @return std::string The Response Body variable.
  */
 const std::string &Processor::getResponseBody() const {
@@ -374,7 +374,7 @@ const std::string &Processor::getResponseBody() const {
 
 /**
  * @brief Getter to the status code variable saved in the object.
- * 
+ *
  * @return std::string The Status Code variable.
  */
 const std::string &Processor::getStatusCode() const {

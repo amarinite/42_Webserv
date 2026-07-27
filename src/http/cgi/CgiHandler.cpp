@@ -31,25 +31,27 @@ bool CgiHandler::canHandleCgi(const t_uri& uri, const LocationConfig& conf)
 		return false;
 
 	// Extension mismatch: The location has cgi_extension .py, but the request is for /cgi-bin/logo.png or /index.html.
-	std::map<std::string, std::string>& cgiExt = conf.getCgiExtension();
+	const std::map<std::string, std::string>& cgiExt = conf.getCgiExtension();
 	if (cgiExt.count(fileExt) == 0)
 		return false;
 
 	std::string scriptPath = conf.getRoot() + uri.path;
-	validateCgiPaths(scriptPath, cgiExt[fileExt]);
+	std::map<std::string, std::string>::const_iterator it = cgiExt.find(fileExt);
+	if (it != cgiExt.end())
+		validateCgiPaths(scriptPath, it->second);
 
 	return true;
 }
 
 char** CgiHandler::buildCgiEnv(const Request& req, const ServerConfig& conf, const std::string& ip)
 {
-	 std::map<std::string, std::string> env;
-
+	std::map<std::string, std::string> env;
+	const std::vector<ListenAddr>& addrs = conf.getListenVector();
 	env["GATEWAY_INTERFACE"] = "CGI/1.1";
 	env["SERVER_SOFTWARE"] = "Group de Afectadous by Taha";
-	env["SERVER_NAME"] = conf.getListen().host; // Get it from servConf
+	env["SERVER_NAME"] = addrs.empty() ? "" : addrs[0].host;// Get it from servConf
 	env["SERVER_PROTOCOL"] = "HTTP/1.1";
-	env["SERVER_PORT"] = numberToString(servConf.getListen().port); // Get it from servConf
+	env["SERVER_PORT"] = numberToString(addrs.empty() ? 0 : addrs[0].port); // Get it from servConf
 	env["REQUEST_METHOD"] = req.getMethod();
 	env["SCRIPT_NAME"] = req.getUri().path;
 	env["REMOTE_ADDR"] = ip; // IP CLIENT

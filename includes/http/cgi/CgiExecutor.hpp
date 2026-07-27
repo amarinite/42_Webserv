@@ -2,13 +2,14 @@
 
 #include <string>
 #include <unistd.h>
-
+#include <ctime>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdexcept>
 #include <vector>
+#include <stdlib.h>
 
 class CgiExecutor
 {
@@ -22,7 +23,7 @@ class CgiExecutor
 		std::string	_outputBuffer;	// Accumulates raw output read from CGI
 		bool		_isFinished;	// Set to true when CGI closes stdout or exits
 
-		void		closePipes(int* stdinPipe, int *stdoutPipe);
+		void		closePipes();
 		void		setNonBlocking(int fd);
 
 	public:
