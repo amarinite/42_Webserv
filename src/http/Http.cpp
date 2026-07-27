@@ -114,7 +114,7 @@ bool Http::checkCgiTimeout(double timeoutSeconds) {
 
 void Http::HttpRoutine(char *buff, size_t bytesRead) {
 	try {
-		switch(_status) {
+		switch (_status) {
 			case READING_HEADERS: {
 				handleBuffer(buff, bytesRead);
 				if (_request.parseRequestHead()) {
@@ -142,13 +142,12 @@ void Http::HttpRoutine(char *buff, size_t bytesRead) {
 				break;
 			}
 			case CGI_WRITING:
-			case CGI_READING: {
-				// nothing to do here
+			case CGI_READING:
 				break;
-			}
 			case WRITING_RESPONSE: {
 				_processor->prepareResponse();
 				_status = FINISHED;
+				break;
 			}
 			case FINISHED:
 				break;
@@ -172,7 +171,7 @@ bool Http::isWaitingOnCgi() const {
 void Http::onCgiWritable() {
 	try {
 		_cgi->handleWriteEvent();
-		if (_cgi->getWriteFd() == -1)          // body fully sent
+		if (_cgi->getWriteFd() == -1)
 			_status = CGI_READING;
 	} catch (const HttpException &e) {
 		finishWithError(e);

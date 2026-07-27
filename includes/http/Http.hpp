@@ -1,13 +1,21 @@
 #pragma once
 
-#include <cerrno>
 #include <string>
+
+#include "ServerConfig.hpp"
 #include "HttpRequest.hpp"
+<<<<<<< HEAD
 #include "HttpException.hpp"
 #include "HttpResponse.hpp"
 #include "CgiExecutor.hpp"
 #include "ServerConfig.hpp"
 #include "Processor.hpp"
+=======
+#include "Processor.hpp"
+#include "HttpResponse.hpp"
+
+
+>>>>>>> 18-http-general
 
 enum State {
 	READING_HEADERS,
@@ -31,6 +39,8 @@ class Http {
 		CgiExecutor			*_cgi;
 		std::string			_clientIp;
 		
+		// IP!!!!!!!!!!!!!!!!!!!
+
 		//Functs
 		void addLeftover(std::string &rawBuff, size_t &rawBuffSize);
 		void handleBuffer(char *buff, size_t bytesRead);

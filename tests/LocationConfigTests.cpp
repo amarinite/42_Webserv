@@ -62,7 +62,7 @@ static bool testLocationConfigDirectives()
 	ASSERT(loc.getPath().path == "/downloads");
 	ASSERT(loc.getRoot() == "/var/www");
 	ASSERT(loc.getIndex()[0] == "main.html");
-	ASSERT(loc.hasAutoindex() == true);
+	ASSERT(loc.hasAutoIndex() == true);
 	
 	ASSERT(loc.getAllowedMethods().size() == 2); 
 	ASSERT(loc.getAllowedMethods()[0] == "POST");
@@ -165,7 +165,7 @@ static bool testLocationConfigBooleans()
 	LocationConfig locOff = LocationConfig::build(nodeOff, dummyParent);
 	delete nodeOff;
 
-	ASSERT(locOff.hasAutoindex() == false);
+	ASSERT(locOff.hasAutoIndex() == false);
 	ASSERT(locOff.hasUploadEnabled() == false);
 	ASSERT(locOff.hasCgi() == false);
 
@@ -185,7 +185,7 @@ static bool testLocationConfigBooleans()
 	LocationConfig locOn = LocationConfig::build(nodeOn, dummyParent);
 	delete nodeOn;
 
-	ASSERT(locOn.hasAutoindex() == true);
+	ASSERT(locOn.hasAutoIndex() == true);
 	ASSERT(locOn.hasUploadEnabled() == true);
 	ASSERT(locOn.hasCgi() == true);
 

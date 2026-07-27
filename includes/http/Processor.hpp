@@ -50,6 +50,8 @@ class Processor {
 		bool findIndexPage();
 		bool isValidMethod();
 
+		const std::string requestPath() const;
+
 	public: 
 		// Constructor.
 		Processor(Request &req, Response &res, const LocationConfig &lc);
