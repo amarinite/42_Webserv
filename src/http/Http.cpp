@@ -1,48 +1,43 @@
 #include "Http.hpp"
 
-Http::Http() : _rawBuff(""),
-	_rawBuffSize(0),
+Http::Http(const ServerConfig &sc) :
+	_rawBuff(""),
+	_sConfig(sc),
 	_status(READING_HEADERS),
-	_request()
-{}
-
-// Http::Http(const HandleSocket &socket) : _status(READING_HEADERS), _socket(socket) {}
-
-Http::Http(const Http &other) {
-	*this = other;
+	_rawBuffSize(0),
+	_request(sc.getClientMaxBodySize()),
+	_response(),
+	_processor(NULL),
+	_cgi(NULL) {
+	//	_processor(_request, _sConfig.getLocationConfig(_request._uri));
 }
 
-Http &Http::operator=(const Http &other) {
-	if (this != &other) {
-		_rawBuff = other._rawBuff;
-		_rawBuffSize = other._rawBuffSize;
-		_status = other._status;
-		_request = other._request;
-		// _response = other._response;
+Http::~Http() {
+	if (_processor != NULL) {
+		delete _processor;
+		_processor = NULL;
 	}
-	return *this;
+	delete _cgi;
 }
-
-Http::~Http() {}
 
 //Functs
 void Http::addLeftover(std::string &rawBuff, size_t &rawBufferSize) {
-	const bool hasLeftover = !_request._leftover.empty();
+	const bool hasLeftover = !_request.getLeftover().empty();
 	const bool hasRawBuff  = !rawBuff.empty();
 
 	if (!hasLeftover && hasRawBuff)
 		return;
 	if (hasLeftover && !hasRawBuff) {
-		rawBuff = _request._leftover;
+		rawBuff = _request.getLeftover();
 		rawBufferSize = rawBuff.size();
-		_request._leftover.clear();
+		_request.clearLeftover();
 		return;
 	}
 	if (!hasLeftover && !hasRawBuff)
 		throw HttpException(400, "Bad Request: Empty Buffer.");
-	rawBuff = _request._leftover + rawBuff;
-	rawBufferSize += _request._leftover.size();
-	_request._leftover.clear();
+	rawBuff = _request.getLeftover() + rawBuff;
+	rawBufferSize += _request.getLeftover().size();
+	_request.clearLeftover();
 }
 
 void Http::handleBuffer(char *buff, size_t bytesRead) {
@@ -53,60 +48,161 @@ void Http::handleBuffer(char *buff, size_t bytesRead) {
 	size_t rawBuffSize = bytesRead;
 	addLeftover(rawBuff, rawBuffSize);
 
-	_request._stream = rawBuff;
-	// std::string head = rawBuff;
-	// size_t bodyStart = 0;
-
-	// if (_status == READING_HEADERS) {
-	// 	size_t end = head.find("\r\n\r\n");
-	// 	if (end == std::string::npos) {
-	// 		_request._stream = head;
-	// 		return;
-	// 	}
-	// 	bodyStart = end + 4;
-	// }
-	// _request._stream = head.substr(0, bodyStart);
+	_request.setStream(rawBuff);
 }
 
 bool Http::methodGetCase() {
-	if (_request._method != "GET") 
+	if (_request.getMethod() != "GET") 
 		return true;
-	if (_request._headers.count("content-length") > 0
-		|| _request._headers.count("transfer-encoding") > 0)
+	const std::map<std::string, std::string> &headers = _request.getHeaders();
+	if (headers.count("content-length") > 0 || headers.count("transfer-encoding") > 0)
 		throw HttpException(400, "Bad Request: Body Present in GET Method.");
-	_status = PROCESSING;
 	return true;
 }
 
+void Http::setClientIp(const std::string &ip) {
+	_clientIp = ip;
+}
+
+// la_funct_del_isaac() {
+// 	// Deberia ser algo asi:
+// 	Http Request; 
+// 	char buffer[cantidad];
+// 	size_t bytesRead = recv(something, &buffer, something);
+// 	try {
+// 		Request.httpRoutine(buffer, bytesRead);
+// 		buildResponse();
+// 	} catch (const HttpException& e) {
+// 		Request._status = WRITING_RESPONSE;
+// 		buildResponse();
+// 	}
+// }
+
+void Http::startProcessing() {
+	const LocationConfig &lc = _sConfig.getLocationConfig(_request.getUri());
+	delete _processor;
+	_processor = new Processor(_request, _response, lc);
+}
+
+void Http::startCgi() {
+	char **envp = CgiHandler::buildCgiEnv(_request, _sConfig,
+		_processor->getCgiScriptPath(), _clientIp);
+
+	_cgi = new CgiExecutor();
+	try {
+		_cgi->execute(envp, _processor->getCgiScriptPath(),
+			_processor->getCgiExecPath(), _request.getBody());
+	} catch (const std::exception &ex) {
+		CgiHandler::freeCgiEnv(envp);
+		delete _cgi;
+		_cgi = NULL;
+		throw HttpException(500,
+			std::string("Internal Server Error: CGI failed to start (") + ex.what() + ")");
+	}
+	CgiHandler::freeCgiEnv(envp);
+}
+
+bool Http::checkCgiTimeout(double timeoutSeconds) {
+	if (!_cgi)
+		return false;
+	if (_cgi->checkTimeout(timeoutSeconds)) {
+		finishWithError(HttpException(504, "Gateway Timeout"));
+		return true;
+	}
+	return false;
+}
+
 void Http::HttpRoutine(char *buff, size_t bytesRead) {
-	switch(_status) {
-		case READING_HEADERS: {
-			handleBuffer(buff, bytesRead);
-			if (_request.parseRequestHead()) {
-				_status = READING_BODY;
-				if (methodGetCase() && _request.parseRequestBody())
-					_status = PROCESSING;
+	try {
+		switch (_status) {
+			case READING_HEADERS: {
+				handleBuffer(buff, bytesRead);
+				if (_request.parseRequestHead()) {
+					_status = READING_BODY;
+					if (methodGetCase() && _request.parseRequestBody())
+						_status = PROCESSING;
+				}
+				break;
 			}
-			break;
+			case READING_BODY: {
+				handleBuffer(buff, bytesRead);
+				if (_request.parseRequestBody())
+					_status = PROCESSING;
+				break;
+			}
+			case PROCESSING: {
+				startProcessing();
+				_processor->processorRoutine();
+				if (_processor->wantsCgi()) {
+					startCgi();
+					_status = (_cgi->getWriteFd() == -1) ? CGI_READING : CGI_WRITING;
+				} else {
+					_status = WRITING_RESPONSE;
+				}
+				break;
+			}
+			case CGI_WRITING:
+			case CGI_READING:
+				break;
+			case WRITING_RESPONSE: {
+				_processor->prepareResponse();
+				_status = FINISHED;
+				break;
+			}
+			case FINISHED:
+				break;
 		}
-		case READING_BODY: {
-			handleBuffer(buff, bytesRead);
-			if (_request.parseRequestBody())
-				_status = PROCESSING;
-			break;
+	} catch (const HttpException &e) {
+		finishWithError(e);
+	}
+}
+
+void Http::finishWithError(const HttpException &e) {
+	delete _cgi;
+	_cgi = NULL;
+	_response.prepareErrorResponse(_sConfig.getErrorPages(), e);
+	_status = FINISHED;
+}
+
+bool Http::isWaitingOnCgi() const {
+	return _status == CGI_WRITING || _status == CGI_READING;
+}
+
+void Http::onCgiWritable() {
+	try {
+		_cgi->handleWriteEvent();
+		if (_cgi->getWriteFd() == -1)
+			_status = CGI_READING;
+	} catch (const HttpException &e) {
+		finishWithError(e);
+	}
+}
+
+void Http::onCgiReadable() {
+	try {
+		_cgi->handleReadEvent();
+		if (_cgi->isFinished()) {
+			_processor->consumeCgiOutput(_cgi->getOutput()); // parse CGI header block -> Response
+			delete _cgi;
+			_cgi = NULL;
+			_status = WRITING_RESPONSE;
 		}
-		case PROCESSING: {
-			//Alba
-			break;
-		}
-		case WRITING_RESPONSE: {
-			break;
-		}
-		case FINISHED: {
-			// Segurament no fa falta.
-			break;
-		}
-	}	
+	} catch (const HttpException &e) {
+		finishWithError(e);
+	}
+}
+
+int Http::getCgiWriteFd() const { 
+	return _cgi ? _cgi->getWriteFd() : -1;
+}
+
+int Http::getCgiReadFd()  const { 
+	return _cgi ? _cgi->getReadFd()  : -1; 
+}
+
+void Http::buildResponse(const HttpException& e) {
+	_response.assignHead(e);
+	_response.assignHeaders(_request._headers);
 }
 
 // Getters
@@ -121,6 +217,11 @@ const Request &Http::getRequest() const {
 Request &Http::getRequest() {
 	return _request;
 }
-////////////////////////
-// Revisa si inicialitzes correctament la request i la response. 
-// - Maybe el constructor per defecte de request hauria de fer inicialitzacio basica. 
+
+const Response &Http::getResponse() const {
+	return _response;
+}
+
+Response &Http::getResponse() {
+	return _response;
+}

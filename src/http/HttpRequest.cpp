@@ -1,6 +1,8 @@
 #include "HttpRequest.hpp"
 
-Request::Request() : 
+bool exceptConnection = false;
+
+Request::Request(size_t clientMaxBodySize) :
 	_methodParsed(false),
 	_uriParsed(false),
 	_httpVerParsed(false),
@@ -9,28 +11,39 @@ Request::Request() :
 	_incompleteEndLine(false),
 	_bodyType(EMPTY),
 	_maxBodySize(0),
-	_chunkSize(false) {}
+	_client_max_body_size(clientMaxBodySize),
+	_chunkSize(false),
+	_allowedMethods(NULL) {}
 
-Request::Request(const Request &other) : _leftover(NULL) {
-	*this = other;
-}
+// Request::Request(const Request &other) : _leftover(NULL) {
+// 	*this = other;
+// }
 
-Request &Request::operator=(const Request &other) {
-	if (this != &other) {
-		this->_headers = other._headers;
-		this->_body = other._body;
-		this->_stream = other._stream;
-		this->_leftover = other._leftover;
-	}
-	return *this;
-}
+// Request &Request::operator=(const Request &other) {
+// 	if (this != &other) {
+// 		this->_headers = other._headers;
+// 		this->_body = other._body;
+// 		this->_stream = other._stream;
+// 		this->_leftover = other._leftover;
+// 	}
+// 	return *this;
+// }
 
 Request::~Request() {}
 
 // Functs
+std::string Request::getConnection() const {
+	std::map<std::string, std::string>::const_iterator it = _headers.find("connection");
+	if (it != _headers.end()) {
+		if (it->second == "close")
+			return "close";
+	}
+	return "keep-alive";
+}
+
 static void tolowerStr(std::string &str) {
 	for (size_t i = 0; i < str.size(); ++i) {
-		unsigned char c = static_cast<char>(str[i]);
+		unsigned char c = static_cast<unsigned char>(str[i]);
 		str[i] = static_cast<char>(std::tolower(c));
 	}
 }
@@ -65,8 +78,6 @@ bool Request::parseMethod() {
 		safeGetLine(_stream, _method, ' ', this->_methodParsed);
 		if (!this->_methodParsed)
 			return false;
-		if (_method != "GET" && _method != "POST" && _method != "DELETE") // To be redone by server restrictions.
-			throw HttpException(400, "Bad Request: Invalid Method");
 	}
 
 	if (!this->_uriParsed) {
@@ -82,7 +93,7 @@ bool Request::parseMethod() {
 		if (!this->_httpVerParsed)
 			return false;
 		if (_httpVer != "HTTP/1.1")
-			throw HttpException(400, "Bad Request: Incorrect HTTP Protocol");
+			throw HttpException(505, "HTTP Version Not Supported");
 		if (!safeEnd())
 			return false;
 	}
@@ -194,18 +205,35 @@ void Request::checkInvalidHeaders() {
 
 }
 
+static void setGlobalConnexion(std::map<std::string, std::string> &headers) {
+	std::map<std::string, std::string>::iterator it = headers.begin();
+	for (; it != headers.end(); ++it) {
+		if (it->first == "connexion") {
+			if (it->second == "close") {
+				exceptConnection = false;
+				return;
+			} else if (it->second == "keep-alive") {
+				break;
+			} else
+				throw HttpException(400, "Bad Request: Invalid Header.");
+		}
+	}
+	exceptConnection = true;
+} 
+
 bool Request::parseRequestHead() {
 	if (!parseMethod())
 		return false;
 	if (!parseHeaders())
 		return false;
 	checkInvalidHeaders();
+	setGlobalConnexion(_headers);
 			
 	return true;
 }
 
 // Body Functs
-bool isHexDigit(char c) {
+static bool isHexDigit(char c) {
 	return std::isdigit(static_cast<unsigned char>(c)) ||
 		   (c >= 'a' && c <= 'f') ||
 		   (c >= 'A' && c <= 'F');
@@ -240,10 +268,13 @@ void Request::setBodyType() {
 	else if (!hasContentLength && !hasTransferEncoding) {
 		if (_stream.size() > 0)
 			_leftover = _stream;
+		_bodyType = NO_BODY;
 	}
 	else if (hasContentLength) {
 		_bodyType = FULL;
-		_maxBodySize = strToSize_t(_headers.find("content-length")->second.c_str(), 10);
+		_maxBodySize = strToSize_t(_headers.find("content-length")->second, 10);
+		if (_maxBodySize > _client_max_body_size)
+			throw HttpException(413, "Payload Too Large.");
 	} else if (hasTransferEncoding) 
 		_bodyType = CHUNKED;
 }
@@ -271,7 +302,6 @@ bool Request::fullBody() {
 }
 
 bool Request::chunkedBody() {
-	
 	const std::string delimiter = "\r\n";
 	while (true) {
 		if (!_leftoverBody.empty()) {
@@ -284,7 +314,9 @@ bool Request::chunkedBody() {
 			_stream.clear();
 			return false;
 		}
-
+		_chunkTotal += pos;
+		if (_chunkTotal > _client_max_body_size)
+			throw HttpException(413, "Payload Too Large.");
 		if (!_chunkSize) {
 			std::string sizeStr = _stream.substr(0, pos);
 
@@ -324,6 +356,8 @@ bool Request::chunkedBody() {
 
 bool Request::parseRequestBody() {
 	setBodyType();
+	if (_bodyType == NO_BODY)
+		return true;
 	if (_bodyType == FULL) {
 		if(!fullBody())
 			return false;
@@ -335,14 +369,36 @@ bool Request::parseRequestBody() {
 }
 
 //Getters
-std::string	Request::getMethod() {
+const std::string &Request::getMethod() const{
 	return this->_method;
 }
 
-std::map<std::string, std::string>  Request::getHeaders() {
+const std::string &Request::getBody() const {
+	return this->_body;
+}
+
+const std::string &Request::getPath() const {
+	return _uri.path;
+}
+
+std::string Request::getLeftover(){
+	return _leftover;
+}
+
+const t_uri &Request::getUri() const{
+	return this->_uri;
+}
+
+const std::map<std::string, std::string> Request::getHeaders() const{
 	return this->_headers;
 }
 
-std::string	Request::getBody() {
-	return this->_body;
+// Setters
+void Request::setStream(const std::string &stream) {
+	_stream = stream;
+}
+
+// Other Var tools
+void Request::clearLeftover() {
+	_leftover.clear();
 }

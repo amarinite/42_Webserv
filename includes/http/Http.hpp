@@ -1,46 +1,75 @@
 #pragma once
 
-#include <cerrno>
 #include <string>
+
+#include "ServerConfig.hpp"
 #include "HttpRequest.hpp"
+<<<<<<< HEAD
 #include "HttpException.hpp"
+#include "HttpResponse.hpp"
+#include "CgiExecutor.hpp"
+#include "ServerConfig.hpp"
+#include "Processor.hpp"
+=======
+#include "Processor.hpp"
+#include "HttpResponse.hpp"
+
+
+>>>>>>> 18-http-general
 
 enum State {
 	READING_HEADERS,
 	READING_BODY,
 	PROCESSING,
+	CGI_WRITING,
+	CGI_READING,
 	WRITING_RESPONSE,
 	FINISHED
 };
 
 class Http {
 	private:
-		// Config goes here.
-		std::string	_rawBuff;
-		size_t		_rawBuffSize;
+		std::string			_rawBuff;
+		size_t				_rawBuffSize;
+		State				_status;
+		Request				_request;
+		Response 			_response;
+		const ServerConfig	&_sConfig;
+		Processor			*_processor;
+		CgiExecutor			*_cgi;
+		std::string			_clientIp;
 		
-		State		_status;
-		Request		_request;
-		// Response	_response;
-		
+		// IP!!!!!!!!!!!!!!!!!!!
+
 		//Functs
 		void addLeftover(std::string &rawBuff, size_t &rawBuffSize);
 		void handleBuffer(char *buff, size_t bytesRead);
 		bool methodGetCase();
 
+		void startProcessing();
+		void startCgi();
+		void finishWithError(const HttpException& e);
+
 	public:
-		Http();
-		// Http(const HandleSocket &socket);
-		Http(const Http &other);
-		Http &operator=(const Http &other);
+		Http(const ServerConfig &sc);
 		~Http();
 
 		//Functs
 		void HttpRoutine(char *buff, size_t bytesRead);
+		void setClientIp(const std::string &ip);
+		bool checkCgiTimeout(double timeoutSeconds);
+
+		void onCgiWritable();
+		void onCgiReadable();
+		bool isWaitingOnCgi() const;
+		int  getCgiWriteFd() const;
+		int  getCgiReadFd() const;
 		
 		//Getters
 		State getStatus() const;
 		const Request &getRequest() const;
 		Request &getRequest();
+		const Response &getResponse() const;
+		Response &getResponse();
 };
 

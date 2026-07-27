@@ -31,6 +31,11 @@ void SocketManager::setup()
 
 void SocketManager::run()
 {
+	// CONTROLAR CGI: 
+	// for writing (POLLOUT) -> Call CgiExecutor::handleWriteEvent()
+	// for reading (POLLIN) -> Call CgiExecutor::handleReadEvent()
+	// Check for both POLLIN and POLLOUT, and route events based on what type of file descriptor 
+	// _pollFds[i].fd actually is (listener socket, client socket, CGI read pipe, or CGI write pipe)
 	while (true)
 	{
 		int ready = poll(&_pollFds[0], _pollFds.size(), -1);
