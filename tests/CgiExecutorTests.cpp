@@ -85,33 +85,44 @@ static bool testExecute_simpleGetProducesOutput()
 
 static bool testExecute_postBodyReachesScript()
 {
-	// cat echoes stdin straight back to stdout — perfect for checking the
-	// body actually made it through the write pipe.
+	std::string scriptPath = "/tmp/webserv_test_cat.sh";
+	writeScript(scriptPath,
+		"#!/bin/sh\n"
+		"exec /bin/cat\n");   // cat with no args → reads stdin
+
 	std::string body = "field=value&another=thing";
 
 	char **envp = makeEmptyEnv();
 	CgiExecutor cgi;
-	bool started = cgi.execute(envp, "/bin/cat", "/bin/cat", body);
+	bool started = cgi.execute(envp, scriptPath, "/bin/sh", body);
 	free(envp[0]); free(envp);
 
 	ASSERT(started);
 	ASSERT(driveUntilFinished(cgi, 5));
 	ASSERT(cgi.getOutput() == body);
+
+	remove(scriptPath.c_str());
 	return true;
 }
 
 static bool testExecute_emptyBodyClosesStdinImmediately()
 {
+	std::string scriptPath = "/tmp/webserv_test_cat.sh";
+	writeScript(scriptPath,
+		"#!/bin/sh\n"
+		"exec /bin/cat\n");
+
 	char **envp = makeEmptyEnv();
 	CgiExecutor cgi;
-	bool started = cgi.execute(envp, "/bin/cat", "/bin/cat", "");
+	bool started = cgi.execute(envp, scriptPath, "/bin/sh", "");
 	free(envp[0]); free(envp);
 
 	ASSERT(started);
-	// With no body, execute() should already have closed the write end.
 	ASSERT(cgi.getWriteFd() == -1);
 	ASSERT(driveUntilFinished(cgi, 5));
 	ASSERT(cgi.getOutput().empty());
+
+	remove(scriptPath.c_str());
 	return true;
 }
 

@@ -18,13 +18,6 @@
 Processor::Processor(Request &req, Response &res, const LocationConfig &lc)
 	: _cgiRequested(false), _lc(lc), _req(req), _res(res) {}
 
-// Processor &Processor::operator=(const Processor &p) {
-// 	if (this != &a) {
-// 		_req = p._req;
-// 		_lc = p._lc;
-// 	}
-// }
-
 /**
  * @brief Concatenates root directory with the requested directory
  *
@@ -167,7 +160,7 @@ void Processor::doAutoIndex() {
 }
 
 /**
- * @brief Unifies de functions of GET method and sets the Status code and message.
+ * @brief Unifies the functions of GET method and sets the Status code and message.
  */
 void Processor::handleGet() {
 	bool isDir = validatePathDir(_fullPath);

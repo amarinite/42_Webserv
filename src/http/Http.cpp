@@ -113,23 +113,28 @@ bool Http::checkCgiTimeout(double timeoutSeconds) {
 
 void Http::HttpRoutine(char *buff, size_t bytesRead) {
 	try {
-		switch (_status) {
+	switch (_status) {
 			case READING_HEADERS: {
 				handleBuffer(buff, bytesRead);
 				if (_request.parseRequestHead()) {
 					_status = READING_BODY;
-					if (methodGetCase() && _request.parseRequestBody())
+					if (methodGetCase() && _request.parseRequestBody()) {
 						_status = PROCESSING;
+						goto processing;
+					}
 				}
 				break;
 			}
 			case READING_BODY: {
 				handleBuffer(buff, bytesRead);
-				if (_request.parseRequestBody())
+				if (_request.parseRequestBody()) {
 					_status = PROCESSING;
+					goto processing;
+				}
 				break;
 			}
 			case PROCESSING: {
+			processing:
 				startProcessing();
 				_processor->processorRoutine();
 				if (_processor->wantsCgi()) {
@@ -137,6 +142,7 @@ void Http::HttpRoutine(char *buff, size_t bytesRead) {
 					_status = (_cgi->getWriteFd() == -1) ? CGI_READING : CGI_WRITING;
 				} else {
 					_status = WRITING_RESPONSE;
+					goto wresponse;
 				}
 				break;
 			}
@@ -144,6 +150,7 @@ void Http::HttpRoutine(char *buff, size_t bytesRead) {
 			case CGI_READING:
 				break;
 			case WRITING_RESPONSE: {
+			wresponse:
 				_processor->prepareResponse();
 				_status = FINISHED;
 				break;
