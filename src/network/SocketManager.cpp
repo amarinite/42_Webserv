@@ -121,7 +121,6 @@ void SocketManager::handleClientData(size_t pollIndex)
 			sendAll(fd, &raw[0], raw.size());
 		disconnectClient(pollIndex);
 	}
-
 }
 
 void SocketManager::disconnectClient(size_t pollIndex)

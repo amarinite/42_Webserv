@@ -33,6 +33,7 @@ Processor::Processor(Request &req, Response &res, const LocationConfig &lc)
  * @returns std::stirng with concatenated paths.
  */
 static std::string concatPaths(const std::string &root, const std::string &path) {
+	std::cout << root << path << std::endl;
 	if (root.empty())
 		return path;
 	if (path.empty())
@@ -171,7 +172,6 @@ void Processor::doAutoIndex() {
  */
 void Processor::handleGet() {
 	bool isDir = validatePathDir(_fullPath);
-
 	if (!isDir) {
 			_extension = findFileExtension(_fullPath);
 			_responseBody = readFile(_fullPath);
@@ -245,7 +245,6 @@ void Processor::processorRoutine() {
 		prepareCgi();
 		return; // Http will see wantsCgi() == true and start CgiExecutor itself
 	}
-
 	if (_req.getMethod() == "GET")
 		handleGet();
 	// else if (_req.getMethod() ==  "POST")
