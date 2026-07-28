@@ -147,10 +147,14 @@ void Response::setConnection(const std::string &conn) {
 	_connection = conn;
 }
 
-const std::string& Response::getResponseBody() const {
+const std::string &Response::getResponseBody() const {
 	return _responseBody;
 }
 
 const std::vector<char> &Response::getRawResponse() const {
 	return _rawResponse;
+}
+
+const std::string &Response::getStatusCode() const {
+	return _statusCode;
 }
