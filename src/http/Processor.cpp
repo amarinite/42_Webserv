@@ -33,7 +33,6 @@ Processor::Processor(Request &req, Response &res, const LocationConfig &lc)
  * @returns std::stirng with concatenated paths.
  */
 static std::string concatPaths(const std::string &root, const std::string &path) {
-	std::cout << root << path << std::endl;
 	if (root.empty())
 		return path;
 	if (path.empty())
@@ -105,6 +104,7 @@ bool Processor::findIndexPage() {
 	std::vector<std::string>::const_iterator it = indexes.begin();
 	for (; it != indexes.end(); ++it) {
 		std::string potentialIdx = concatPaths(_fullPath, *it);
+		std::cout << potentialIdx << std::endl;
 		try {
 			if (validateFile(potentialIdx)) {
 				_fullPath = potentialIdx;
@@ -136,12 +136,12 @@ const std::string Processor::requestPath() const {
  */
 void Processor::doAutoIndex() {
 	if (!_lc.hasAutoIndex())
-		throw HttpException(403, "Forbidden");
+		throw HttpException(403, "Forbidden 1");
 
 	DIR *folder = opendir(_fullPath.c_str());
 	if (folder == NULL) {
 		if (errno == EACCES)
-			throw HttpException(403, "Forbidden");
+			throw HttpException(403, "Forbidden 2");
 		else if (errno == ENOENT)
 			throw HttpException(404, "Not Found");
 		else
