@@ -10,7 +10,7 @@ SocketManager::~SocketManager()
 		delete _listeners[i];
 	for (size_t i = 0; i < _clients.size(); i++)
 		delete _clients[i];
-	for (std::map<int, Request*>::iterator it = _requests.begin(); it != _requests.end(); ++it)
+	for (std::map<int, Http*>::iterator it = _httpClients.begin(); it != _httpClients.end(); ++it)
 		delete it->second;
 }
 
@@ -92,52 +92,36 @@ void SocketManager::handleNewConnection(int listenerFd)
 	_clients.push_back(client);
 	_clientConfig[clientFd] = _listenerConfig[listenerFd];
 	addToPoll(clientFd);
-	_requests[clientFd] = new Request(_clientConfig[clientFd]->getClientMaxBodySize());
+	_httpClients[clientFd] = new Http(*_clientConfig[clientFd]);
 	std::cout << "Nuevos cliente, fd " << clientFd << std::endl;
 }
 
 void SocketManager::handleClientData(size_t pollIndex)
 {
 	int fd = _pollFds[pollIndex].fd;
+	std::cout << "[DEBUG] handleClientData llamado para fd " << fd << std::endl;
 	char buffer[1024];
 	ssize_t bytes = recv(fd, buffer, sizeof(buffer), 0);
+	std::cout << "[DEBUG] recv() devolvio " << bytes << " bytes" << std::endl;
 	if (bytes <= 0)
 	{
 		disconnectClient(pollIndex);
 		return;
 	}
-	Request *req = _requests[fd];
-	req->setStream(req->getLeftover() + std::string(buffer, bytes));
-	req->clearLeftover();
-	try
+	Http *http = _httpClients[fd];
+	http->HttpRoutine(buffer, static_cast<size_t>(bytes));
+	std::cout << "[DEBUG] Status tras HttpRoutine: " << http->getStatus() << std::endl;
+	if (http->getStatus() == FINISHED)
 	{
-		while (true)
-		{
-			if (!req->parseRequestHead())
-				break;
-			if (!req->parseRequestBody())
-				break;
-			std::cout << "--- Request completa de fd " << fd
-					<< " metodo: " << req->getMethod() << " ---" << std::endl;
-			std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK";
-			send(fd, response.c_str(), response.size(), 0);
-			std::string leftover = req->getLeftover();
-			resetRequest(fd);
-			req = _requests[fd];
-			req->setStream(leftover);
-			if (leftover.empty())
-				break;
-		}
-	}
-	catch(const HttpException &e)
-	{
-		std::ostringstream oss;
-		std::string body = e.what();
-		oss << "HTTP/1.1 " << e.getStatusCode() << " Error\r\nContent-Length: "
-            << body.size() << "\r\n\r\n" << body;
-		send (fd, oss.str().c_str(), oss.str().size(), 0);
+		std::cout << "[DEBUG] Request FINISHED, enviando respuesta" << std::endl;
+		const Response &resp = http->getResponse();
+		const std::vector<char> &raw = resp.getRawResponse();
+		std::cout << "[DEBUG] Tamano de la respuesta: " << raw.size() << std::endl;
+		if (!raw.empty())
+			sendAll(fd, &raw[0], raw.size());
 		disconnectClient(pollIndex);
 	}
+
 }
 
 void SocketManager::disconnectClient(size_t pollIndex)
@@ -153,8 +137,8 @@ void SocketManager::disconnectClient(size_t pollIndex)
 			break;
 		}
 	}
-	delete _requests[fd];
-	_requests.erase(fd);
+	delete _httpClients[fd];
+	_httpClients.erase(fd);
 	_clientConfig.erase(fd);
 	_pollFds.erase(_pollFds.begin() + pollIndex);
 
@@ -164,6 +148,19 @@ void SocketManager::disconnectClient(size_t pollIndex)
 
 void SocketManager::resetRequest(int fd)
 {
-	delete _requests[fd];
-	_requests[fd] = new Request(_clientConfig[fd]->getClientMaxBodySize());
+	delete _httpClients[fd];
+	_httpClients[fd] = new Http(*_clientConfig[fd]);
+}
+
+void SocketManager::sendAll(int fd, const char *data, size_t len)
+{
+	size_t totalSent = 0;
+	while (totalSent < len)
+	{
+		ssize_t sent = send(fd, data + totalSent, len - totalSent, 0);
+		if (sent <= 0)
+			break;
+		totalSent += sent;
+	}
+
 }
