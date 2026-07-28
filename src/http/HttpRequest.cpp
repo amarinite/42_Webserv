@@ -92,8 +92,11 @@ bool Request::parseMethod() {
 		safeGetLine(_stream, _httpVer, '\r', this->_httpVerParsed);
 		if (!this->_httpVerParsed)
 			return false;
-		if (_httpVer != "HTTP/1.1")
+		if (_httpVer != "HTTP/1.1") {
+			if (_httpVer.size() != 8)
+				throw HttpException (400, "Bad Request");
 			throw HttpException(505, "HTTP Version Not Supported");
+		}
 		if (!safeEnd())
 			return false;
 	}
@@ -118,13 +121,13 @@ bool Request::findKey() {
 	return true;
 }
 
-static void handleValueSpaces(std::string &value) {
-	size_t first = value.find_first_not_of(' ');
-	if (first == std::string::npos) { // todo espacios o vacío
+static void handleValueInvalid(std::string &value, char delChar) {
+	size_t first = value.find_first_not_of(delChar);
+	if (first == std::string::npos) {
 		value.clear();
 		return;
 	}
-	size_t last = value.find_last_not_of(' ');
+	size_t last = value.find_last_not_of(delChar);
 	value.erase(last + 1);
 	value.erase(0, first);
 }
@@ -137,7 +140,10 @@ bool Request::findValue() {
 		if (!safeEnd())
 			return false;
 	}
-	handleValueSpaces(_tmpVal);
+	handleValueInvalid(_tmpVal, '\t');
+	handleValueInvalid(_tmpVal, ' ');
+	handleValueInvalid(_tmpVal, '\t');
+	handleValueInvalid(_tmpVal, ' ');
 	return true;
 }
 
