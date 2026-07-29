@@ -214,7 +214,7 @@ void Request::checkInvalidHeaders() {
 static void setGlobalConnexion(std::map<std::string, std::string> &headers) {
 	std::map<std::string, std::string>::iterator it = headers.begin();
 	for (; it != headers.end(); ++it) {
-		if (it->first == "connexion") {
+		if (it->first == "connection") {
 			if (it->second == "close") {
 				exceptConnection = false;
 				return;
@@ -395,7 +395,7 @@ const t_uri &Request::getUri() const{
 	return this->_uri;
 }
 
-const std::map<std::string, std::string> Request::getHeaders() const{
+const std::map<std::string, std::string>& Request::getHeaders() const{
 	return this->_headers;
 }
 

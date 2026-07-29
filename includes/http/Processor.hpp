@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <fstream>
 #include <sstream>
+#include <unistd.h>
 
 #include "cgi/CgiHandler.hpp"
 #include "HttpRequest.hpp"
@@ -43,7 +44,6 @@ class Processor {
 
 		// Functs.
 		void convertFileExtension(const std::string &ext);
-		void createFile();
 		void doAutoIndex();
 		void handleGet();
 		void handlePost();
@@ -51,6 +51,8 @@ class Processor {
         void prepareCgi();
 		bool findIndexPage();
 		bool isValidMethod();
+		bool isRedirect() const;
+		void handleRedirect();
 
 		const std::string requestPath() const;
 

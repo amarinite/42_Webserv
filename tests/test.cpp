@@ -9,6 +9,8 @@ void runHttpRequestTests(int& passed, int& failed);
 void runServerConfigTests(int& passed, int& failed);
 void runLocationConfigTests(int& passed, int& failed);
 void runConfigBuildTests(int& passed, int& failed);
+void runCgiHandlerTests(int& passed, int& failed);
+void runCgiExecutorTests(int& passed, int& failed);
 
 int main()
 {
@@ -24,6 +26,8 @@ int main()
 	// runServerConfigTests(passed, failed);
 	runLocationConfigTests(passed, failed);
 	runConfigBuildTests(passed, failed);
+	runCgiHandlerTests(passed, failed);
+	runCgiExecutorTests(passed, failed);
 
 	std::cout << "\n" << passed << " passed, " << failed << " failed\n";
 	return (failed > 0 ? 1 : 0);

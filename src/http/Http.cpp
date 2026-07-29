@@ -113,7 +113,7 @@ bool Http::checkCgiTimeout(double timeoutSeconds) {
 
 void Http::HttpRoutine(char *buff, size_t bytesRead) {
 	try {
-		switch (_status) {
+	switch (_status) {
 			case READING_HEADERS: {
 				handleBuffer(buff, bytesRead);
 				if (_request.parseRequestHead()) {

@@ -15,3 +15,4 @@ bool        validatePathDir(const std::string &fullpath);
 bool        validateFile(const std::string &path);
 bool        validateDir(const std::string &dir);
 void        removeFile(const std::string &path);
+void		createFile(const std::string& path, const std::string &content);
