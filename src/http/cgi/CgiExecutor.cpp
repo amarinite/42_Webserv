@@ -1,13 +1,12 @@
 #include "CgiExecutor.hpp"
 
 CgiExecutor::CgiExecutor()
-	: _pid(-1), _startTime(0), _isFinished(false),
-	  _bodyToWrite(), _outputRead()
+    : _pid(-1), _startTime(0), _bodyToWrite(), _outputBuffer(), _isFinished(false)
 {
-	_pipeIn[0] = -1;
-	_pipeIn[1] = -1;
-	_pipeOut[0] = -1;
-	_pipeOut[1] = -1;
+    _pipeIn[0] = -1;
+    _pipeIn[1] = -1;
+    _pipeOut[0] = -1;
+    _pipeOut[1] = -1;
 }
 
 CgiExecutor::~CgiExecutor()
@@ -15,7 +14,7 @@ CgiExecutor::~CgiExecutor()
 	closePipes();
 	if (_pid > 0 && !_isFinished) {
 		kill(_pid, SIGKILL);
-		waitpid(_pid, NULL, WNOHANG);
+		waitpid(_pid, NULL, 0);
 	}
 }
 
@@ -121,6 +120,7 @@ void CgiExecutor::handleWriteEvent()
 	{
 		close(_pipeIn[1]);
 		_pipeIn[1] = -1;
+		_isFinished = true;
 	}
 }
 
@@ -134,7 +134,7 @@ void CgiExecutor::handleReadEvent()
 
 	if (bytesRead > 0)
 	{
-		_outputRead.append(buffer, bytesRead);
+		_outputBuffer.append(buffer, bytesRead);
 	}
 	else if (bytesRead == 0) // EOF reached (CGI script finished writing)
 	{
@@ -143,7 +143,7 @@ void CgiExecutor::handleReadEvent()
 		_isFinished = true;
 
 		if (_pid > 0)
-			waitpid(_pid, NULL, WNOHANG);
+			waitpid(_pid, NULL, 0);
 	}
 	else // Error on read
 	{
@@ -153,12 +153,12 @@ void CgiExecutor::handleReadEvent()
 	}
 }
 
-bool CgiExecutor::checkTimeout(double timeoutSeconds)
+bool CgiExecutor::checkTimeout(time_t timeoutSeconds)
 {
 	if (_isFinished)
 		return false;
 
-	if (difftime(time(NULL), _startTime) > timeoutSeconds)
+	if (difftime(time(NULL), _startTime) >= timeoutSeconds)
 	{
 		kill(_pid, SIGKILL);
 		waitpid(_pid, NULL, WNOHANG); // Clean up zombie entry
@@ -186,5 +186,5 @@ int CgiExecutor::getReadFd() const
 
 const std::string& CgiExecutor::getOutput() const
 {
-	return _outputRead;
+	return _outputBuffer;
 }

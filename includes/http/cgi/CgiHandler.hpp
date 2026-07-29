@@ -1,11 +1,13 @@
 #pragma once
+
 #include <string>
 #include <map>
-#include <unistd.h> 
+#include <unistd.h>
 #include <cstdlib>
 #include <cstring>
 #include <cctype>
-#include <new> 
+#include <new>
+
 #include "ServerConfig.hpp"
 #include "LocationConfig.hpp"
 #include "HttpRequest.hpp"

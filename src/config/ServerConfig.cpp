@@ -8,7 +8,7 @@ ServerConfig::ServerConfig() : _client_max_body_size(1000000), _index()
 std::map<std::string, ServerConfig::DirectiveHandler> ServerConfig::initHandlers()
 {
 	std::map<std::string, DirectiveHandler> m;
-	m["listen"]					= &ServerConfig::setListen;
+	m["listen"]					= &ServerConfig::setListenVector;
 	m["error_page"]				= &ServerConfig::setErrorPage;
 	m["client_max_body_size"]	= &ServerConfig::setClientMaxBodySize;
 	m["root"]					= &ServerConfig::setRoot;

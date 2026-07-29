@@ -2,14 +2,14 @@
 
 Http::Http(const ServerConfig &sc) :
 	_rawBuff(""),
-	_sConfig(sc),
-	_status(READING_HEADERS),
 	_rawBuffSize(0),
+	_status(READING_HEADERS),
 	_request(sc.getClientMaxBodySize()),
 	_response(),
+	_sConfig(sc),
 	_processor(NULL),
-	_cgi(NULL) {
-	//	_processor(_request, _sConfig.getLocationConfig(_request._uri));
+	_cgi(NULL)
+{
 }
 
 Http::~Http() {
@@ -52,7 +52,7 @@ void Http::handleBuffer(char *buff, size_t bytesRead) {
 }
 
 bool Http::methodGetCase() {
-	if (_request.getMethod() != "GET") 
+	if (_request.getMethod() != "GET")
 		return true;
 	const std::map<std::string, std::string> &headers = _request.getHeaders();
 	if (headers.count("content-length") > 0 || headers.count("transfer-encoding") > 0)
@@ -66,7 +66,7 @@ void Http::setClientIp(const std::string &ip) {
 
 // la_funct_del_isaac() {
 // 	// Deberia ser algo asi:
-// 	Http Request; 
+// 	Http Request;
 // 	char buffer[cantidad];
 // 	size_t bytesRead = recv(something, &buffer, something);
 // 	try {
@@ -85,8 +85,7 @@ void Http::startProcessing() {
 }
 
 void Http::startCgi() {
-	char **envp = CgiHandler::buildCgiEnv(_request, _sConfig,
-		_processor->getCgiScriptPath(), _clientIp);
+	char **envp = CgiHandler::buildCgiEnv(_request, _sConfig, _clientIp);
 
 	_cgi = new CgiExecutor();
 	try {
@@ -114,23 +113,28 @@ bool Http::checkCgiTimeout(double timeoutSeconds) {
 
 void Http::HttpRoutine(char *buff, size_t bytesRead) {
 	try {
-		switch (_status) {
+	switch (_status) {
 			case READING_HEADERS: {
 				handleBuffer(buff, bytesRead);
 				if (_request.parseRequestHead()) {
 					_status = READING_BODY;
-					if (methodGetCase() && _request.parseRequestBody())
+					if (methodGetCase() && _request.parseRequestBody()) {
 						_status = PROCESSING;
+						goto processing;
+					}
 				}
 				break;
 			}
 			case READING_BODY: {
 				handleBuffer(buff, bytesRead);
-				if (_request.parseRequestBody())
+				if (_request.parseRequestBody()) {
 					_status = PROCESSING;
+					goto processing;
+				}
 				break;
 			}
 			case PROCESSING: {
+			processing:
 				startProcessing();
 				_processor->processorRoutine();
 				if (_processor->wantsCgi()) {
@@ -138,6 +142,7 @@ void Http::HttpRoutine(char *buff, size_t bytesRead) {
 					_status = (_cgi->getWriteFd() == -1) ? CGI_READING : CGI_WRITING;
 				} else {
 					_status = WRITING_RESPONSE;
+					goto wresponse;
 				}
 				break;
 			}
@@ -145,6 +150,7 @@ void Http::HttpRoutine(char *buff, size_t bytesRead) {
 			case CGI_READING:
 				break;
 			case WRITING_RESPONSE: {
+			wresponse:
 				_processor->prepareResponse();
 				_status = FINISHED;
 				break;
@@ -192,17 +198,21 @@ void Http::onCgiReadable() {
 	}
 }
 
-int Http::getCgiWriteFd() const { 
+int Http::getCgiWriteFd() const {
 	return _cgi ? _cgi->getWriteFd() : -1;
 }
 
-int Http::getCgiReadFd()  const { 
-	return _cgi ? _cgi->getReadFd()  : -1; 
+int Http::getCgiReadFd()  const {
+	return _cgi ? _cgi->getReadFd()  : -1;
 }
 
 void Http::buildResponse(const HttpException& e) {
-	_response.assignHead(e);
-	_response.assignHeaders(_request._headers);
+	(void)e;
+	_response.setStatusCode("200");
+	_response.setMessage("OK");
+	_response.setResponseBody("");
+	_response.assignHeaders(".html", "close");
+	_response.buildRawResponse();
 }
 
 // Getters

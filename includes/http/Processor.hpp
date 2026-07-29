@@ -10,7 +10,9 @@
 #include <sys/stat.h>
 #include <fstream>
 #include <sstream>
+#include <unistd.h>
 
+#include "cgi/CgiHandler.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 #include "LocationConfig.hpp"
@@ -19,7 +21,7 @@
  * @class Processor
  * @brief Fuse paths to get the complete route to the file,
  *		validates its exitance and extraxts exension and file contents.
- * 
+ *
  * Class that contains all necessary functs to process Http Requests.
  *
  */
@@ -30,6 +32,7 @@ class Processor {
 		std::string				_responseBody;
 		std::string				_code;
 		std::string				_codeMsg;
+		std::string				_redirectPath;
 
         bool					_cgiRequested;
 		std::string				_cgiScriptPath;
@@ -37,11 +40,10 @@ class Processor {
 
 		const LocationConfig	&_lc;
 		Request					&_req;
-		Response				&_res;		
+		Response				&_res;
 
 		// Functs.
 		void convertFileExtension(const std::string &ext);
-		void createFile();
 		void doAutoIndex();
 		void handleGet();
 		void handlePost();
@@ -49,13 +51,15 @@ class Processor {
         void prepareCgi();
 		bool findIndexPage();
 		bool isValidMethod();
+		bool isRedirect() const;
+		void handleRedirect();
 
 		const std::string requestPath() const;
 
-	public: 
+	public:
 		// Constructor.
 		Processor(Request &req, Response &res, const LocationConfig &lc);
-		
+
 		// Functs.
 		void processorRoutine();
         void prepareResponse();

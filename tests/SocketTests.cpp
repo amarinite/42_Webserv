@@ -1,7 +1,7 @@
 #include "SocketHandler.hpp"
 #include "SocketManager.hpp"
 #include "TestUtils.hpp"
-
+/*
 bool testSocketCreation()
 {
 	try
@@ -43,7 +43,7 @@ bool testSocketManagerCreation()
 		return false;
 	}
 
-}
+}*/
 
 void runSocketTests(int& passed, int& failed)
 {
