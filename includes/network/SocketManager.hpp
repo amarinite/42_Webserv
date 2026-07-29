@@ -28,9 +28,9 @@ private:
 	void updatePollEvents(int fd, short events);
 
 	void handleNewConnection(int listenerFd);
-	void handleClientData(size_t pollIndex);
+	void handleClientData(int fd);
 	void handleCgiEvent(int fd, short revents);
-	void disconnectClient(size_t pollIndex);
+	void disconnectClient(int fd);
 	void resetRequest(int fd);
 
 	void syncCgiState(int clientFd, Http *http);

@@ -32,7 +32,7 @@ void SocketManager::setup(const std::vector<ServerConfig> &configs)
 			_listeners.push_back(listener);
 			_listenerConfig[listener->getFD()] = &configs[i];
 
-			addToPoll(listener->getFD());
+			addPollFd(listener->getFD(), POLLIN);
 			std::cout << "Escuchando " << addrs[j].host << ":" << addrs[j].port << " con fd " << listener->getFD() << std::endl;
 		}
 
@@ -40,42 +40,76 @@ void SocketManager::setup(const std::vector<ServerConfig> &configs)
 
 }
 
-void SocketManager::run()
+// Gestion de fds por Fd
+
+void SocketManager::addPollFd(int fd, short events)
 {
-	// CONTROLAR CGI:
-	// for writing (POLLOUT) -> Call CgiExecutor::handleWriteEvent()
-	// for reading (POLLIN) -> Call CgiExecutor::handleReadEvent()
-	// Check for both POLLIN and POLLOUT, and route events based on what type of file descriptor
-	// _pollFds[i].fd actually is (listener socket, client socket, CGI read pipe, or CGI write pipe)
-	while (true)
+	struct pollfd newPfd;
+	newPfd.fd = fd;
+	newPfd.events = events;
+	newPfd.revents = 0;
+	_pollFds.push_back(newPfd);
+}
+
+void SocketManager::removePollFd(int fd)
+{
+	for (size_t i = 0; i < _pollFds.size(); i++)
 	{
-		int ready = poll(&_pollFds[0], _pollFds.size(), -1);
-		if (ready < 0)
-			throw std::runtime_error("poll() failed");
-		for (size_t i = 0; i < _pollFds.size(); i++)
+		if (_pollFds[i].fd == fd)
 		{
-			if (!(_pollFds[i].revents & POLLIN))
-				continue;
-			int fd = _pollFds[i].fd;
-			if (_listenerConfig.find(fd) != _listenerConfig.end())
-				handleNewConnection(fd);
-			else
-			{
-				handleClientData(i);
-				break;
-			}
+			_pollFds.erase(_pollFds.begin() + i);
+			return;
 		}
 	}
 }
 
-void SocketManager::addToPoll(int fd)
+void SocketManager::updatePollEvents(int fd, short events)
 {
-	struct pollfd newPfd;
-	newPfd.fd = fd;
-	newPfd.events = POLLIN;
-	newPfd.revents = 0;
-	_pollFds.push_back(newPfd);
+	for (size_t i = 0; i < _pollFds.size(); i++)
+	{
+		if (_pollFds[i].fd == fd)
+		{
+			_pollFds[i].events = events;
+			return ;
+		}
+	}
+
 }
+
+// Loop Principal
+void SocketManager::run()
+{
+	const int POLL_TIMEOUT_MS = 1000; // Timeout CGI
+
+	while (true)
+	{
+		int ready = poll(&_pollFds[0], _pollFds.size(), POLL_TIMEOUT_MS);
+		if (ready < 0)
+			throw std::runtime_error("poll() failed");
+		for (size_t i = 0; i < _pollFds.size(); i++)
+		{
+			short revents = _pollFds[i].revents;
+			if (revents == 0)
+				continue;
+			int fd = _pollFds[i].fd;
+			if (_listenerConfig.find(fd) != _listenerConfig.end())
+				handleNewConnection(fd);
+			else if (_clientConfig.find(fd) != _clientConfig.end())
+			{
+				handleClientData(fd);
+				break;
+			}
+			else if (_cgiFdToClient.find(fd) != _cgiFdToClient.end())
+			{
+				handleCgiEvent(fd, revents);
+				break;
+			}
+		}
+		checkAllCgiTimeouts();
+	}
+}
+
+// Nuevas Conexiones
 
 void SocketManager::handleNewConnection(int listenerFd)
 {
@@ -91,56 +125,164 @@ void SocketManager::handleNewConnection(int listenerFd)
 
 	_clients.push_back(client);
 	_clientConfig[clientFd] = _listenerConfig[listenerFd];
-	addToPoll(clientFd);
+	addPollFd(clientFd, POLLIN);
 	_httpClients[clientFd] = new Http(*_clientConfig[clientFd]);
 	std::cout << "Nuevos cliente, fd " << clientFd << std::endl;
 }
 
-void SocketManager::handleClientData(size_t pollIndex)
+//Gestionar D A T O S
+
+void SocketManager::handleClientData(int fd)
 {
-	int fd = _pollFds[pollIndex].fd;
-	std::cout << "[DEBUG] handleClientData llamado para fd " << fd << std::endl;
+	Http *http = _httpClients[fd];
+
+	if (http->isWaitingOnCgi())
+		return;
+
 	char buffer[1024];
 	ssize_t bytes = recv(fd, buffer, sizeof(buffer), 0);
-	std::cout << "[DEBUG] recv() devolvio " << bytes << " bytes" << std::endl;
+
 	if (bytes <= 0)
 	{
-		disconnectClient(pollIndex);
+		disconnectClient(fd);
 		return;
 	}
-	Http *http = _httpClients[fd];
 	http->HttpRoutine(buffer, static_cast<size_t>(bytes));
-	std::cout << "[DEBUG] Status tras HttpRoutine: " << http->getStatus() << std::endl;
-	if (http->getStatus() == FINISHED)
+	syncCgiState(fd, http);
+}
+
+//Sincronizando con el CGI Nueva York
+
+void SocketManager::syncCgiState(int clientFd, Http *http)
+{
+	State status = http->getStatus();
+	if (status == CGI_WRITING)
 	{
-		std::cout << "[DEBUG] Request FINISHED, enviando respuesta" << std::endl;
-		const Response &resp = http->getResponse();
-		const std::vector<char> &raw = resp.getRawResponse();
-		std::cout << "[DEBUG] Tamano de la respuesta: " << raw.size() << std::endl;
-		if (!raw.empty())
-			sendAll(fd, &raw[0], raw.size());
-		disconnectClient(pollIndex);
+		int wfd = http->getCgiWriteFd();
+		if (wfd != -1 && _cgiFdToClient.find(wfd) == _cgiFdToClient.end())
+		{
+			addPollFd(wfd, POLLOUT);
+			_cgiFdToClient[wfd] = clientFd;
+		}
+	}
+	else if (status == CGI_READING)
+	{
+		int rfd = http->getCgiReadFd();
+		if (rfd != -1 && _cgiFdToClient.find(rfd) == _cgiFdToClient.end())
+		{
+			addPollFd(rfd, POLLIN);
+			_cgiFdToClient[rfd] = clientFd;
+		}
+	}
+	else if (status == FINISHED)
+		finishAndRespond(clientFd, http);
+}
+
+// Handelear Evento de la pipe del cejeI
+
+void SocketManager::handleCgiEvent(int fd, short revents)
+{
+	std::map <int, int>::iterator it = _cgiFdToClient.find(fd);
+	if (it == _cgiFdToClient.end())
+		return;
+	int clientFd = it->second;
+	Http *http = _httpClients[clientFd];
+
+	if (revents && POLLOUT)
+	{
+		http->onCgiWritable();
+
+		if (http->getCgiWriteFd() == -1)
+		{
+			removePollFd(fd);
+			_cgiFdToClient.erase(fd);
+			syncCgiState(clientFd, http);
+		}
+	}
+	else if (revents && POLLIN)
+	{
+		http->onCgiReadable();
+
+		if (http->getCgiReadFd() == -1)
+		{
+			removePollFd(fd);
+			_cgiFdToClient.erase(fd);
+			while (http->getStatus() == WRITING_RESPONSE)
+				http->HttpRoutine(NULL, 0);
+			if (http->getStatus() == FINISHED)
+				finishAndRespond(clientFd, http);
+		}
 	}
 }
 
-void SocketManager::disconnectClient(size_t pollIndex)
-{
-	int fd = _pollFds[pollIndex].fd;
+// Todo donete ahora toca enviar el ojete
 
+void SocketManager::finishAndRespond(int clientFd, Http *http)
+{
+	const Response &resp = http->getResponse();
+	const std::vector<char> &raw = resp.getRawResponse();
+	if (!raw.empty())
+	{
+		size_t totalSent = 0;
+		while (totalSent < raw.size())
+		{
+			ssize_t sent = send(clientFd, &raw[0] + totalSent, raw.size() - totalSent, 0);
+			if (sent <= 0)
+				break;
+			totalSent += sent;
+		}
+	}
+	disconnectClient(clientFd);
+}
+
+//Ha morisionado el CGI nueva york?
+
+void SocketManager::checkAllCgiTimeouts()
+{
+	const double CGI_TIMEOUT_SECONDS = 30.0;
+
+	std::vector<int> toFinish;
+
+	for (std::map<int, Http*>::iterator it = _httpClients.begin(); it != _httpClients.end(); ++it)
+	{
+		Http *http = it->second;
+		if (http->isWaitingOnCgi() && http->checkCgiTimeout(CGI_TIMEOUT_SECONDS))
+			toFinish.push_back(it->first);
+	}
+	for (size_t i = 0; i < toFinish.size(); i++)
+	{
+		int clientFd = toFinish[i];
+		Http *http = _httpClients[clientFd];
+
+		for (std::map<int, int>::iterator cit = _cgiFdToClient.begin(); cit != _cgiFdToClient.end();)
+		{
+			if (cit->second == clientFd)
+			{
+				removePollFd(cit->first);
+				_cgiFdToClient.erase(cit++);
+			}
+			else
+				++cit;
+
+		}
+		finishAndRespond(clientFd, http);
+	}
+}
+
+
+// He disconnected
+void SocketManager::disconnectClient(int fd)
+{
+	removePollFd(fd);
 	for (size_t i = 0; i < _clients.size(); i++)
 	{
-		if (_clients[i]->getFD() == fd)
-		{
-			delete _clients[i];
-			_clients.erase(_clients.begin() + i);
-			break;
-		}
+		delete _clients[i];
+		_clients.erase(_clients.begin() + i);
+		break;
 	}
 	delete _httpClients[fd];
 	_httpClients.erase(fd);
 	_clientConfig.erase(fd);
-	_pollFds.erase(_pollFds.begin() + pollIndex);
-
 	std::cout << "Cliente desconectado, fd: " << fd << std::endl;
 
 }
@@ -149,17 +291,4 @@ void SocketManager::resetRequest(int fd)
 {
 	delete _httpClients[fd];
 	_httpClients[fd] = new Http(*_clientConfig[fd]);
-}
-
-void SocketManager::sendAll(int fd, const char *data, size_t len)
-{
-	size_t totalSent = 0;
-	while (totalSent < len)
-	{
-		ssize_t sent = send(fd, data + totalSent, len - totalSent, 0);
-		if (sent <= 0)
-			break;
-		totalSent += sent;
-	}
-
 }
