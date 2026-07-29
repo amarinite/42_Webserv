@@ -52,19 +52,19 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp  Makefile | $(OBJ_DIR)
 $(OBJ_DIR):
 	@mkdir -p $(OBJ_DIR)
 
-$(TEST_OBJ_DIR)/%.o: $(TEST_DIR)/%.cpp | $(TEST_OBJ_DIR)
+$(TEST_OBJ_DIR)/%.o: $(TEST_DIR)/%.cpp Makefile | $(TEST_OBJ_DIR)
 	@mkdir -p $(dir $@)
-	@$(CXX) $(CXXFLAGS) -c $< -o $@
+	@$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
-$(TEST_OBJ_DIR)/deps/%.o: src/%.cpp | $(TEST_OBJ_DIR)
+$(TEST_OBJ_DIR)/deps/%.o: src/%.cpp Makefile | $(TEST_OBJ_DIR)
 	@mkdir -p $(dir $@)
-	@$(CXX) $(CXXFLAGS) -c $< -o $@
+	@$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 $(TEST_OBJ_DIR):
 	@mkdir -p $(TEST_OBJ_DIR)
 
 $(TEST_NAME): $(TEST_OBJ)
-	@$(CXX) $(CXXFLAGS) $(TEST_OBJ) -o $(TEST_NAME)
+	@$(CXX) $(CXXFLAGS) -fsanitize=address -g -O0 $(TEST_OBJ) -o $(TEST_NAME)
 
 test: $(TEST_NAME)
 	@echo "$(BLUE)running tests...$(RESET)"

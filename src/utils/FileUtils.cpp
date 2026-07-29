@@ -15,6 +15,17 @@ std::string readFile(const std::string& path)
 	return buffer.str();
 }
 
+void createFile(const std::string& path, const std::string &content)
+{
+	std::ofstream newFile(path.c_str(), std::ios::binary);
+	if (newFile.is_open()) {
+		newFile.write(content.data(), content.size());
+		newFile.close();
+	} else {
+		throw HttpException(500, "Internal Server Error: error creating file.");
+	}
+}
+
 /**
  * @brief Detects if the path refers to a file or directory and
  *			if it has the according access rights.
@@ -52,7 +63,7 @@ bool validateFile(const std::string &path) {
 	if (stat(path.c_str(), &buff) != 0)
 		throw HttpException(404, "Not Found.");
 	if (!S_ISREG(buff.st_mode))
-        throw HttpException(403, "Forbidden: Target is not a regular file.");
+		throw HttpException(403, "Forbidden: Target is not a regular file.");
 	if (access(path.c_str(), R_OK) != 0)
 		throw HttpException(403, "Forbidden.");
 	return true;
@@ -101,8 +112,8 @@ std::string findFileExtension(const std::string &path) {
  */
 void removeFile(const std::string &path) {
 	if (access(path.c_str(), W_OK) != 0) {
-        throw HttpException(403, "Forbidden: No write permissions to delete file.");
-    }
+		throw HttpException(403, "Forbidden: No write permissions to delete file.");
+	}
 	if (std::remove(path.c_str()) != 0)
 		throw HttpException(500, "Internal Server Error: Couldnt remove file.");
 }

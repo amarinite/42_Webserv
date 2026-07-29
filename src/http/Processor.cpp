@@ -18,13 +18,6 @@
 Processor::Processor(Request &req, Response &res, const LocationConfig &lc)
 	: _cgiRequested(false), _lc(lc), _req(req), _res(res) {}
 
-// Processor &Processor::operator=(const Processor &p) {
-// 	if (this != &a) {
-// 		_req = p._req;
-// 		_lc = p._lc;
-// 	}
-// }
-
 /**
  * @brief Concatenates root directory with the requested directory
  *
@@ -79,19 +72,19 @@ void Processor::convertFileExtension(const std::string &ext) {
 // 		handlePlainTxt(it->second);
 // }
 
-/**
- * @brief Creates a file and fill it with the body parsed in the Http Request.
- *
- * @throws HttpException 500 if ti fails creating th file.
- */
-void Processor::createFile() {
-	std::ofstream newFile(_fullPath.c_str());
-	if (newFile.is_open()) {
-		newFile << _req.getBody();
-		newFile.close();
-	} else
-		throw HttpException(500, "Internal Server Error: error creating file.");
-}
+// /**
+//  * @brief Creates a file and fill it with the body parsed in the Http Request.
+//  *
+//  * @throws HttpException 500 if ti fails creating th file.
+//  */
+// void Processor::createFile() {
+// 	std::ofstream newFile(_fullPath.c_str());
+// 	if (newFile.is_open()) {
+// 		newFile << _req.getBody();
+// 		newFile.close();
+// 	} else
+// 		throw HttpException(500, "Internal Server Error: error creating file.");
+// }
 
 /**
  * @brief checks for multiple index pages and returns de first that exists.
@@ -167,7 +160,7 @@ void Processor::doAutoIndex() {
 }
 
 /**
- * @brief Unifies de functions of GET method and sets the Status code and message.
+ * @brief Unifies the functions of GET method and sets the Status code and message.
  */
 void Processor::handleGet() {
 	bool isDir = validatePathDir(_fullPath);
@@ -186,15 +179,38 @@ void Processor::handleGet() {
 	_codeMsg = "Ok";
 }
 
-// /**
-//  * @brief Unifies de functions of POST method and sets the Status code and message.
-//  */
-// void Processor::handlePost() {
-// 	validateDirectory();
-// 	createFile();
-// 	_code = 201;
-// 	_codeMsg = "Created";
-// }
+/**
+ * @brief Unifies the functions of POST method and sets the Status code and message.
+ */
+void Processor::handlePost() {
+	if (!_lc.hasUploadEnabled())
+		throw HttpException(403, "Forbidden: Upload not allowed");
+
+	const std::string uploadPath = _lc.getUploadStore();
+	validateDir(uploadPath);
+	if (access(uploadPath.c_str(), W_OK) != 0)
+		throw HttpException(403, "Forbidden: Upload directory is not writable");
+	
+	std::string uriPath = _req.getPath();
+	if (uriPath[uriPath.size() - 1] == '/')
+		uriPath.erase(uriPath.size() - 1);
+	
+	std::string filename;
+	size_t lastSlash = uriPath.rfind('/');
+	if (lastSlash != std::string::npos)
+		filename = uriPath.substr(lastSlash + 1);
+	else
+		filename = uriPath;
+
+	if (filename.empty() || filename.find("..") != std::string::npos)
+		throw HttpException(400, "Bad Request: Invalid filename");
+
+	_fullPath = concatPaths(uploadPath, filename);
+	createFile(_fullPath, _req.getBody());
+	_code = "201";
+	_codeMsg = "Created";
+
+}
 
 /**
  * @brief Unifies de functions of DELETE method and sets the Status code and message.
@@ -227,6 +243,21 @@ static std::string findAllowedMethods(const std::vector<std::string> &allowed) {
 	return oss.str();
 }
 
+bool Processor::isRedirect() const {
+	return !_lc.getRedirect().path.empty();
+}
+
+void Processor::handleRedirect() {
+	const t_uri &redirect = _lc.getRedirect();
+
+	_code = "301";
+	_codeMsg = "Moved Permanently";
+	_redirectPath = toString(redirect);
+	_responseBody.clear();
+	// if browser shows error
+	// _responseBody = "<html><body><a href=\"" + _redirectPath + "\">Redirecting...</a></body></html>";
+}
+
 // Routine
 /**
  * @brief Derives the processing of the request to a handler depending on the Method.
@@ -234,24 +265,28 @@ static std::string findAllowedMethods(const std::vector<std::string> &allowed) {
  * @param method Method extracted in the Parse of the Http Request.
  */
 void Processor::processorRoutine() {
+	if (isRedirect()) {
+		handleRedirect();
+		return;
+	}
+
 	_fullPath = concatPaths(_lc.getRoot(), _req.getPath());
 	if (!isValidMethod()) {
 		throw HttpException(405, "Method Not Allowed", findAllowedMethods(_lc.getAllowedMethods()));
 	}
-	// Redirect
 	// CGI
-    if (CgiHandler::canHandleCgi(_req.getUri(), _lc)) {
+	if (CgiHandler::canHandleCgi(_req.getUri(), _lc)) {
 		prepareCgi();
 		return; // Http will see wantsCgi() == true and start CgiExecutor itself
 	}
 	if (_req.getMethod() == "GET")
 		handleGet();
-	// else if (_req.getMethod() ==  "POST")
-		// handlePost();
+	else if (_req.getMethod() ==  "POST")
+		handlePost();
 	else if (_req.getMethod() ==  "DELETE")
 		handleDelete();
 	else
-	   	throw HttpException(501, "Not Implemented");
+		throw HttpException(501, "Not Implemented");
 }
 
 void Processor::prepareCgi() {
@@ -266,15 +301,15 @@ void Processor::prepareCgi() {
 }
 
 bool Processor::wantsCgi() const {
-    return _cgiRequested;
+	return _cgiRequested;
 }
 
 const std::string &Processor::getCgiScriptPath() const {
-    return _cgiScriptPath;
+	return _cgiScriptPath;
 }
 
 const std::string &Processor::getCgiExecPath() const {
-    return _cgiExecPath;
+	return _cgiExecPath;
 }
 
 void Processor::consumeCgiOutput(const std::string &rawCgiOutput) {

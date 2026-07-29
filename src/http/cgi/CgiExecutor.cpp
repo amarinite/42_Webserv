@@ -14,7 +14,7 @@ CgiExecutor::~CgiExecutor()
 	closePipes();
 	if (_pid > 0 && !_isFinished) {
 		kill(_pid, SIGKILL);
-		waitpid(_pid, NULL, WNOHANG);
+		waitpid(_pid, NULL, 0);
 	}
 }
 
@@ -120,6 +120,7 @@ void CgiExecutor::handleWriteEvent()
 	{
 		close(_pipeIn[1]);
 		_pipeIn[1] = -1;
+		_isFinished = true;
 	}
 }
 
@@ -142,7 +143,7 @@ void CgiExecutor::handleReadEvent()
 		_isFinished = true;
 
 		if (_pid > 0)
-			waitpid(_pid, NULL, WNOHANG);
+			waitpid(_pid, NULL, 0);
 	}
 	else // Error on read
 	{
@@ -157,7 +158,7 @@ bool CgiExecutor::checkTimeout(time_t timeoutSeconds)
 	if (_isFinished)
 		return false;
 
-	if (difftime(time(NULL), _startTime) > timeoutSeconds)
+	if (difftime(time(NULL), _startTime) >= timeoutSeconds)
 	{
 		kill(_pid, SIGKILL);
 		waitpid(_pid, NULL, WNOHANG); // Clean up zombie entry
