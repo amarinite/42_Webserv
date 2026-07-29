@@ -51,7 +51,7 @@ class Processor {
         void prepareCgi();
 		bool findIndexPage();
 		bool isValidMethod();
-		bool isRedirect();
+		bool isRedirect() const;
 		void handleRedirect();
 
 		const std::string requestPath() const;

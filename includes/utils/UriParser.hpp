@@ -39,4 +39,4 @@ struct t_uri {
 };
 
 void			parseUri(t_uri &uri, std::string req);
-std::string		toString(t_uri &uri);
+std::string		toString(const t_uri &uri);

@@ -206,7 +206,7 @@ void Processor::handlePost() {
 	if (filename.find("..") != std::string::npos)
 		throw HttpException(400, "Bad Request: Invalid filename");
 
-	_fullPath = concatPaths(uploadStore, filename);
+	_fullPath = concatPaths(uploadPath, filename);
 	createFile(_fullPath, _req.getBody());
 	_code = "201";
 	_codeMsg = "Created";
