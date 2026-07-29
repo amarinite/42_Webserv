@@ -50,4 +50,5 @@ class Response {
 		// Getters
 		const std::string		&getResponseBody() const;
 		const std::vector<char>	&getRawResponse() const;
+		const std::string		&getStatusCode() const;
 };

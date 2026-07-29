@@ -11,6 +11,7 @@ class ErrorMsg {
         _msg[201] = "Created";
         _msg[204] = "No Content";
         _msg[301] = "Moved Permanently";
+		_msg[302] = "Found";
         _msg[400] = "Bad Request";
         _msg[403] = "Forbidden";
         _msg[404] = "Not Found";

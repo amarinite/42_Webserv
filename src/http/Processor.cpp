@@ -164,7 +164,6 @@ void Processor::doAutoIndex() {
  */
 void Processor::handleGet() {
 	bool isDir = validatePathDir(_fullPath);
-
 	if (!isDir) {
 			_extension = findFileExtension(_fullPath);
 			_responseBody = readFile(_fullPath);
@@ -280,7 +279,6 @@ void Processor::processorRoutine() {
 		prepareCgi();
 		return; // Http will see wantsCgi() == true and start CgiExecutor itself
 	}
-
 	if (_req.getMethod() == "GET")
 		handleGet();
 	else if (_req.getMethod() ==  "POST")

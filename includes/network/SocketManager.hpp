@@ -4,6 +4,7 @@
 #include "HttpRequest.hpp"
 #include "HttpException.hpp"
 #include "ServerConfig.hpp"
+#include "Http.hpp"
 #include <vector>
 #include <map>
 #include <poll.h>
@@ -14,7 +15,7 @@ private:
 	std::vector<HandleSocket*>		_listeners;
 	std::vector<HandleSocket*>		_clients;
 	std::vector<struct pollfd>		_pollFds;
-	std::map<int, Request*>			_requests;
+	std::map<int, Http*>			_httpClients;
 	std::map<int, const ServerConfig*>	_listenerConfig;
 	std::map<int, const ServerConfig*>	_clientConfig;
 
@@ -23,6 +24,7 @@ private:
 	void handleClientData(size_t pollIndex);
 	void disconnectClient(size_t pollIndex);
 	void resetRequest(int fd);
+	void sendAll(int fd, const char *data, size_t len);
 
 	SocketManager(const SocketManager &other);
 	SocketManager &operator=(const SocketManager &other);

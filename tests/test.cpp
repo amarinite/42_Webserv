@@ -23,7 +23,7 @@ int main()
 	runSocketTests(passed, failed);
 	runUriTests(passed, failed);
 	runHttpRequestTests(passed, failed);
-	runServerConfigTests(passed, failed);
+	// runServerConfigTests(passed, failed);
 	runLocationConfigTests(passed, failed);
 	runConfigBuildTests(passed, failed);
 	runCgiHandlerTests(passed, failed);

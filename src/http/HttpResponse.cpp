@@ -47,15 +47,15 @@ void Response::setLocationHeader(const std::string &location) {
 void Response::setAllowedMethodsHeader(const std::string &allowed) {
 	_headers["Allow: "] = allowed;
 }
-
 void Response::errorBody(const std::string &statusCode, const std::string &errorDir) {
-	std::string errPage = errorDir;
-	if (!errPage.empty() && errPage[errPage.size() - 1] != '/') {
-		errPage += "/";
-	}
-	errPage += statusCode + ".html";
+	// std::string errPage = errorDir;
+	// if (!errPage.empty() && errPage[errPage.size() - 1] != '/') {
+	// 	errPage += "/";
+	// }
+	// errPage += statusCode + ".html";
+	(void) statusCode;
 	try {
-		_responseBody = readFile(errPage);
+		_responseBody = readFile("www" + errorDir);
 	} catch (...) {
 		_statusCode = toStr(500);
 		_message = "Internal Server Error";
@@ -147,10 +147,14 @@ void Response::setConnection(const std::string &conn) {
 	_connection = conn;
 }
 
-const std::string& Response::getResponseBody() const {
+const std::string &Response::getResponseBody() const {
 	return _responseBody;
 }
 
 const std::vector<char> &Response::getRawResponse() const {
 	return _rawResponse;
+}
+
+const std::string &Response::getStatusCode() const {
+	return _statusCode;
 }
