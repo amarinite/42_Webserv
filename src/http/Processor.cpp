@@ -203,7 +203,7 @@ void Processor::handlePost() {
 	else
 		filename = uriPath;
 
-	if (filename.find("..") != std::string::npos)
+	if (filename.empty() || filename.find("..") != std::string::npos)
 		throw HttpException(400, "Bad Request: Invalid filename");
 
 	_fullPath = concatPaths(uploadPath, filename);
