@@ -381,6 +381,60 @@ static bool testTooManyArgsThrows()
 	return true;
 }
 
+static bool testNestedLocationValidSubPathDoesNotThrow()
+{
+	std::string input =
+		"server {\n listen 80;\n root /a;\n"
+		"	location /a {\n root /a;\n"
+		"		location /a/b {\n root /a/b;\n }\n"
+		"	}\n"
+		"}\n";
+	ASSERT(!validateThrows(input));
+	return true;
+}
+
+static bool testNestedLocationInvalidSubPathThrows()
+{
+	std::string input =
+		"server {\n listen 80;\n root /a;\n"
+		"	location /a {\n root /a;\n"
+		"		location /xyz {\n root /xyz;\n }\n"
+		"	}\n"
+		"}\n";
+	ASSERT(validateThrows(input));
+	return true;
+}
+
+static bool testDoublyNestedLocationValidatesAgainstImmediateParent()
+{
+	// /a/b/c is a sub-path of /a/b (its immediate parent), which is itself
+	// a sub-path of /a -- confirms the check walks against the closest
+	// enclosing location, not just the top-level one
+	std::string input =
+		"server {\n listen 80;\n root /a;\n"
+		"	location /a {\n root /a;\n"
+		"		location /a/b {\n root /a/b;\n"
+		"			location /a/b/c {\n root /a/b/c;\n }\n"
+		"		}\n"
+		"	}\n"
+		"}\n";
+	ASSERT(!validateThrows(input));
+	return true;
+}
+
+static bool testNestedLocationPrefixButNotSubPathThrows()
+{
+	// /ab shares characters with /a but is NOT a valid sub-path (no '/' boundary)
+	std::string input =
+		"server {\n listen 80;\n root /a;\n"
+		"	location /a {\n root /a;\n"
+		"		location /ab {\n root /ab;\n }\n"
+		"	}\n"
+		"}\n";
+	ASSERT(validateThrows(input));
+	return true;
+}
+
 // ============ runner ============
 
 void runConfigValidatorTests(int& passed, int& failed)
@@ -422,6 +476,10 @@ void runConfigValidatorTests(int& passed, int& failed)
 		{ "cgi_extension invalid path throws",  testCgiExtensionInvalidPathThrows },
 		{ "too few args throws",                testTooFewArgsThrows },
 		{ "too many args throws",               testTooManyArgsThrows },
+		{ "valid nested location subpath",      testNestedLocationValidSubPathDoesNotThrow },
+		{ "invalid nested location throws",     testNestedLocationInvalidSubPathThrows },
+		{ "correct double nested route",        testDoublyNestedLocationValidatesAgainstImmediateParent },
+		{ "nested prefix not subpath throws",   testNestedLocationPrefixButNotSubPathThrows }
 	};
 	int localPassed = 0;
 	int localFailed = 0;

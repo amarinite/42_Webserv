@@ -41,6 +41,8 @@ class ConfigValidator
 
 		// FOR LOCATION
 		static void hasOneRoutePath(const Node* node);
+		static bool isSubPath(const std::string& parentPath, const std::string& childPath);
+		static void isPathContainedInParent(const Node* node, const std::string& parentLocationPath);
 
 		// FOR DIRECTIVES
 		static void validateDirective(const Node* node); // dispatch to specific validators
@@ -58,7 +60,7 @@ class ConfigValidator
 		static void validateCgiExtension(const Node* node);
 
 		// VALIDATION ENFORCER
-		static void validateNode(const Node* node, std::set<ListenAddr>& seenAddrs);
+		static void validateNode(const Node* node, std::set<ListenAddr>& seenAddrs, const std::string& parentPath);
 
 	public:
 		static void validate(const Node* root);

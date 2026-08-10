@@ -192,14 +192,47 @@ static bool testLocationConfigBooleans()
 	return true;
 }
 
+static bool testLocationConfigNestedBuild()
+{
+	ServerConfig dummyParent;   // default root="" , index=["index.html"]
+
+	std::string configInput =
+		"server {\n"
+		"    location /a {\n"
+		"        root /var/www/a;\n"
+		"        location /a/b {\n"
+		"            index nested.html;\n"
+		"        }\n"
+		"    }\n"
+		"}\n";
+
+	Node* locationNode = getFirstLocationNode(configInput);
+	ASSERT(locationNode != NULL);
+
+	LocationConfig loc = LocationConfig::build(locationNode, dummyParent);
+	delete locationNode;
+
+	ASSERT(loc.getPath().path == "/a");
+	ASSERT(loc.getRoot() == "/var/www/a");
+	ASSERT(loc.getIndex()[0] == "index.html");   // inherited from server default
+
+	ASSERT(loc.getLocations().size() == 1);
+	const LocationConfig& nested = loc.getLocations()[0];
+	ASSERT(nested.getPath().path == "/a/b");
+	ASSERT(nested.getRoot() == "/var/www/a");     // inherited from parent LOCATION, not server
+	ASSERT(nested.getIndex()[0] == "nested.html"); // overridden by nested location itself
+
+	return true;
+}
+
 void runLocationConfigTests(int& passed, int& failed)
 {
 	Test tests[] = {
 		{ "a normal location with each directive set",	testLocationConfigDirectives },
 		{ "location inherits root and index from server parent", testLocationConfigInheritance },
 		{ "default location / is created when none present", testLocationConfigBuildDefault },
-		{ "booleans for autoindex, cgi, upload, are correct", testLocationConfigBooleans }
-
+		{ "booleans for autoindex, cgi, upload, are correct", testLocationConfigBooleans },
+		{ "nested locations are created correctly", testLocationConfigNestedBuild }
 	};
 
 	int localPassed = 0;

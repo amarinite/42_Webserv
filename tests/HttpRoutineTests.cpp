@@ -2,6 +2,8 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <sys/stat.h>
+#include <fstream>
 
 #include "Http.hpp"
 #include "HttpException.hpp"
@@ -38,6 +40,89 @@ inline void printTestSummary(const char* name, int passed, int failed) {
 	if (failed > 0)
 		std::cout << RED << " (" << failed << " failed)" << RESET;
 	std::cout << "\n";
+}
+
+// ---------------------------------------------------------------------------
+// Node-tree helpers for building LocationConfig without setters
+// ---------------------------------------------------------------------------
+static Node* makeDirective(const std::string& name, const std::vector<std::string>& args)
+{
+	Node* n = new Node(NODE_DIR, name, LOCATION_CTXT, 1);
+	n->args = args;
+	return n;
+}
+
+static Node* makeLocationBlock(const std::string& path,
+							   const std::vector<Node*>& directives)
+{
+	Node* loc = new Node(NODE_BLOCK, "location", LOCATION_CTXT, 1);
+	loc->args.push_back(path);
+	for (size_t i = 0; i < directives.size(); ++i)
+		loc->children.push_back(directives[i]);
+	return loc;
+}
+
+// ---------------------------------------------------------------------------
+// Config builders
+// ---------------------------------------------------------------------------
+static ServerConfig makeUploadConfig(const std::string& storePath)
+{
+	mkdir(storePath.c_str(), 0755);
+
+	Node* d1 = makeDirective("upload_store", std::vector<std::string>(1, storePath));
+	Node* d2 = makeDirective("allowed_methods", std::vector<std::string>(1, "POST"));
+
+	std::vector<Node*> dirs;
+	dirs.push_back(d1);
+	dirs.push_back(d2);
+
+	Node* locNode = makeLocationBlock("/upload", dirs);
+
+	ServerConfig parent;                         // default (root/index inherited)
+	LocationConfig loc = LocationConfig::build(locNode, parent);
+
+	ServerConfig sc;
+	sc.addLocation(loc);
+
+	delete locNode;                              // recursively deletes d1, d2
+	return sc;
+}
+
+static ServerConfig makeRedirectConfig()
+{
+	Node* d1 = makeDirective("redirect", std::vector<std::string>(1, "/new"));
+	Node* d2 = makeDirective("allowed_methods", std::vector<std::string>(1, "GET"));
+
+	std::vector<Node*> dirs;
+	dirs.push_back(d1);
+	dirs.push_back(d2);
+
+	Node* locNode = makeLocationBlock("/old", dirs);
+
+	ServerConfig parent;
+	LocationConfig loc = LocationConfig::build(locNode, parent);
+
+	ServerConfig sc;
+	sc.addLocation(loc);
+
+	delete locNode;
+	return sc;
+}
+
+static ServerConfig makePostNoUploadConfig()
+{
+    Node* d1 = makeDirective("allowed_methods", std::vector<std::string>(1, "POST"));
+    std::vector<Node*> dirs;
+    dirs.push_back(d1);
+    Node* locNode = makeLocationBlock("/upload", dirs);
+
+    ServerConfig parent;
+    LocationConfig loc = LocationConfig::build(locNode, parent);
+
+    ServerConfig sc;
+    sc.addLocation(loc);
+    delete locNode;
+    return sc;
 }
 
 static ServerConfig& getTestConfig() {
@@ -335,6 +420,96 @@ static bool testHeadersWithTabSpaces() {
 	return true;
 }
 
+static bool testPostUploadCreatesFile()
+{
+	std::string uploadDir = "/tmp/webserv_test_uploads";
+	ServerConfig sc = makeUploadConfig(uploadDir);
+	Http h(sc);
+
+	std::string body = "hello from upload test";
+	std::ostringstream req;
+	req << "POST /upload/myfile.txt HTTP/1.1\r\n"
+		<< "Host: localhost\r\n"
+		<< "Content-Length: " << body.size() << "\r\n"
+		<< "\r\n"
+		<< body;
+
+	feed(h, req.str());
+
+	ASSERT(h.getStatus() == FINISHED);
+	ASSERT(h.getResponse().getStatusCode() == "201");
+
+	// Verify file was actually written
+	std::string filePath = uploadDir + "/myfile.txt";
+	std::ifstream in(filePath.c_str());
+	ASSERT(in.is_open());
+	std::stringstream content;
+	content << in.rdbuf();
+	ASSERT(content.str() == body);
+	in.close();
+
+	// Cleanup
+	remove(filePath.c_str());
+	rmdir(uploadDir.c_str());
+	return true;
+}
+
+static bool testPostUploadNotAllowed()
+{
+    ServerConfig sc = makePostNoUploadConfig();   // allows POST, no upload_store
+    Http h(sc);
+    std::string body = "some data";
+    std::ostringstream req;
+    req << "POST /upload/file.txt HTTP/1.1\r\n"
+        << "Host: localhost\r\n"
+        << "Content-Length: " << body.size() << "\r\n"
+        << "\r\n"
+        << body;
+
+    feed(h, req.str());
+    ASSERT(h.getStatus() == FINISHED);
+    ASSERT(h.getResponse().getStatusCode() == "403");
+    return true;
+}
+
+static bool testRedirectReturns301()
+{
+	ServerConfig sc = makeRedirectConfig();
+	Http h(sc);
+
+	feed(h, "GET /old HTTP/1.1\r\nHost: localhost\r\n\r\n");
+
+	ASSERT(h.getStatus() == FINISHED);
+	ASSERT(h.getResponse().getStatusCode() == "301");
+
+	// Verify Location header appears in the serialized response
+	const std::vector<char>& raw = h.getResponse().getRawResponse();
+	std::string rawStr(raw.begin(), raw.end());
+	ASSERT(rawStr.find("Location: /new") != std::string::npos);
+	return true;
+}
+
+static bool testRedirectPrecedesMethodCheck()
+{
+	// Location /old only allows GET, but redirect is checked BEFORE isValidMethod()
+	ServerConfig sc = makeRedirectConfig();
+	Http h(sc);
+
+	std::string body = "x";
+	std::ostringstream req;
+	req << "POST /old HTTP/1.1\r\n"
+		<< "Host: localhost\r\n"
+		<< "Content-Length: " << body.size() << "\r\n"
+		<< "\r\n"
+		<< body;
+
+	feed(h, req.str());
+	ASSERT(h.getStatus() == FINISHED);
+	// Must redirect (301), NOT 405 Method Not Allowed
+	ASSERT(h.getResponse().getStatusCode() == "301");
+	return true;
+}
+
 void runHttpRequestTests(int& passed, int& failed) {
 	Test tests[] = {
 		{ "Test 1: Simple GET request head",                   testSimpleGetRequest },
@@ -365,6 +540,10 @@ void runHttpRequestTests(int& passed, int& failed) {
 		{ "Test 26: Payload too large (Content-Length)",       testContentLengthExceedsClientMaxBodySize },
 		{ "Test 28: Split CRLF between network packets",       testCRLFDistributedAcrossPackets },
 		{ "Test 29: Headers with tab whitespace trimming",     testHeadersWithTabSpaces },
+		{ "Test 30: POST upload creates file",                  testPostUploadCreatesFile },
+		{ "Test 31: POST upload not allowed returns 403",       testPostUploadNotAllowed },
+		{ "Test 32: Redirect returns 301 with Location header", testRedirectReturns301 },
+		{ "Test 33: Redirect precedes method check",            testRedirectPrecedesMethodCheck }
 	};
 
 	int localPassed = 0;

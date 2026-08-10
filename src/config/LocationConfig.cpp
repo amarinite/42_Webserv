@@ -20,30 +20,40 @@ std::map<std::string, LocationConfig::DirectiveHandler> LocationConfig::initHand
 	return m;
 }
 
-LocationConfig LocationConfig::build(Node* locationNode, const ServerConfig& parent)
+LocationConfig LocationConfig::buildFrom(Node* locationNode, const std::string& root, const std::vector<std::string>& index)
 {
-	LocationConfig config;
-
-	config._root = parent.getRoot();
-	config._index = parent.getIndex();
-
 	static std::map<std::string, DirectiveHandler> handlers = initHandlers();
+	LocationConfig config;
+	config._root = root;
+	config._index = index;
 
 	t_uri uri;
 	parseUri(uri, locationNode->args[0]);
 	config._path = uri;
 
-	std::vector<Node *> directiveNodes = getChildrenByType(locationNode, NODE_DIR);
-	for (size_t i = 0; i < directiveNodes.size(); i++)
+	std::vector<Node*> directiveNodes = getChildrenByType(locationNode, NODE_DIR);
+	for (size_t i = 0; i < directiveNodes.size(); ++i)
 	{
 		std::map<std::string, DirectiveHandler>::iterator it = handlers.find(directiveNodes[i]->name);
 		if (it != handlers.end())
 			(config.*(it->second))(directiveNodes[i]);
 	}
 
-	// TO DO: handle nested locations
+	std::vector<Node*> nestedNodes = getChildrenByType(locationNode, NODE_BLOCK, "location");
+	for (size_t i = 0; i < nestedNodes.size(); ++i)
+		config._locations.push_back(LocationConfig::build(nestedNodes[i], config));
 
 	return config;
+}
+
+LocationConfig LocationConfig::build(Node* locationNode, const ServerConfig& parent)
+{
+	return buildFrom(locationNode, parent.getRoot(), parent.getIndex());
+}
+
+LocationConfig LocationConfig::build(Node* locationNode, const LocationConfig& parent)
+{
+	return buildFrom(locationNode, parent.getRoot(), parent.getIndex());
 }
 
 LocationConfig LocationConfig::buildDefault(const ServerConfig& parent)
@@ -118,6 +128,19 @@ bool LocationConfig::hasCgi() const
 	return !_cgi_extension.empty();
 }
 
+bool isValidMatch(const std::string& reqPath, const std::string& configPath)
+{
+	if (reqPath.compare(0, configPath.size(), configPath) != 0)
+		return false;
+	if (reqPath.size() == configPath.size())
+		return true;
+	if (configPath[configPath.size() - 1] == '/')
+		return true;
+	if (reqPath[configPath.size()] == '/')
+		return true;
+	return false;
+}
+
 const t_uri& LocationConfig::getPath() const
 {
 	return _path;
@@ -151,4 +174,29 @@ const std::string& LocationConfig::getRoot() const
 const std::vector<std::string>& LocationConfig::getIndex() const
 {
 	return _index;
+}
+
+const std::vector<LocationConfig>& LocationConfig::getLocations() const
+{
+	return _locations;
+}
+
+const LocationConfig* LocationConfig::getLocationConfig(const t_uri& uri) const
+{
+	const LocationConfig* best = NULL;
+	size_t bestLen = 0;
+	for (size_t i = 0; i < _locations.size(); ++i)
+	{
+		const std::string& path = _locations[i].getPath().path;
+		if (isValidMatch(uri.path, path) && path.size() > bestLen)
+		{
+			best = &_locations[i];
+			bestLen = path.size();
+		}
+	}
+	if (!best)
+		return NULL;
+	
+	const LocationConfig* deeper = best->getLocationConfig(uri);
+	return deeper ? deeper : best;
 }
