@@ -86,7 +86,6 @@ void Http::startProcessing() {
 
 void Http::startCgi() {
 	char **envp = CgiHandler::buildCgiEnv(_request, _sConfig, _clientIp);
-
 	_cgi = new CgiExecutor();
 	try {
 		_cgi->execute(envp, _processor->getCgiScriptPath(),

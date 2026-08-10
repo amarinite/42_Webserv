@@ -178,7 +178,7 @@ void SocketManager::syncCgiState(int clientFd, Http *http)
 		finishAndRespond(clientFd, http);
 }
 
-// Handelear Evento de la pipe del cejeI
+// Handelear Evento de la pipe del CGI
 
 void SocketManager::handleCgiEvent(int fd, short revents)
 {
@@ -187,9 +187,9 @@ void SocketManager::handleCgiEvent(int fd, short revents)
 		return;
 	int clientFd = it->second;
 	Http *http = _httpClients[clientFd];
-
-	if (revents && POLLOUT)
+	if (revents & POLLOUT)
 	{
+		std::cout << "Entre al pollout" << std::endl;
 		http->onCgiWritable();
 
 		if (http->getCgiWriteFd() == -1)
@@ -199,7 +199,7 @@ void SocketManager::handleCgiEvent(int fd, short revents)
 			syncCgiState(clientFd, http);
 		}
 	}
-	else if (revents && POLLIN)
+	else if (revents & POLLIN)
 	{
 		http->onCgiReadable();
 
@@ -207,7 +207,7 @@ void SocketManager::handleCgiEvent(int fd, short revents)
 		{
 			removePollFd(fd);
 			_cgiFdToClient.erase(fd);
-			while (http->getStatus() == WRITING_RESPONSE)
+			if (http->getStatus() == WRITING_RESPONSE)
 				http->HttpRoutine(NULL, 0);
 			if (http->getStatus() == FINISHED)
 				finishAndRespond(clientFd, http);
@@ -276,9 +276,12 @@ void SocketManager::disconnectClient(int fd)
 	removePollFd(fd);
 	for (size_t i = 0; i < _clients.size(); i++)
 	{
-		delete _clients[i];
-		_clients.erase(_clients.begin() + i);
-		break;
+		if (_clients[i]->getFD() == fd)
+		{
+			delete _clients[i];
+			_clients.erase(_clients.begin() + i);
+			break;
+		}
 	}
 	delete _httpClients[fd];
 	_httpClients.erase(fd);

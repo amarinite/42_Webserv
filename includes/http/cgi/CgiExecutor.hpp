@@ -10,6 +10,8 @@
 #include <stdexcept>
 #include <vector>
 #include <stdlib.h>
+#include <iostream>
+#include <cerrno>
 
 class CgiExecutor
 {
