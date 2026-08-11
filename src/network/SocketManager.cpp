@@ -182,37 +182,35 @@ void SocketManager::syncCgiState(int clientFd, Http *http)
 
 void SocketManager::handleCgiEvent(int fd, short revents)
 {
-	std::map <int, int>::iterator it = _cgiFdToClient.find(fd);
-	if (it == _cgiFdToClient.end())
-		return;
-	int clientFd = it->second;
-	Http *http = _httpClients[clientFd];
-	if (revents & POLLOUT)
-	{
-		std::cout << "Entre al pollout" << std::endl;
-		http->onCgiWritable();
+    std::map<int, int>::iterator it = _cgiFdToClient.find(fd);
+    if (it == _cgiFdToClient.end())
+        return;
+    int clientFd = it->second;
+    Http *http = _httpClients[clientFd];
 
-		if (http->getCgiWriteFd() == -1)
-		{
-			removePollFd(fd);
-			_cgiFdToClient.erase(fd);
-			syncCgiState(clientFd, http);
-		}
-	}
-	else if (revents & POLLIN)
-	{
-		http->onCgiReadable();
-
-		if (http->getCgiReadFd() == -1)
-		{
-			removePollFd(fd);
-			_cgiFdToClient.erase(fd);
-			if (http->getStatus() == WRITING_RESPONSE)
-				http->HttpRoutine(NULL, 0);
-			if (http->getStatus() == FINISHED)
-				finishAndRespond(clientFd, http);
-		}
-	}
+    if (revents & POLLOUT)
+    {
+        http->onCgiWritable();
+        if (http->getCgiWriteFd() == -1)
+        {
+            removePollFd(fd);
+            _cgiFdToClient.erase(fd);
+            syncCgiState(clientFd, http);
+        }
+    }
+    else if (revents & (POLLIN | POLLHUP | POLLERR))
+    {
+        http->onCgiReadable();
+        if (http->getCgiReadFd() == -1)
+        {
+            removePollFd(fd);
+            _cgiFdToClient.erase(fd);
+            if (http->getStatus() == WRITING_RESPONSE)
+                http->HttpRoutine(NULL, 0);
+            if (http->getStatus() == FINISHED)
+                finishAndRespond(clientFd, http);
+        }
+    }
 }
 
 // Todo donete ahora toca enviar el ojete

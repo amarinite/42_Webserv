@@ -129,35 +129,27 @@ void CgiExecutor::handleReadEvent()
 	if (_pipeOut[0] == -1)
 		return;
 
-	while (true)
+	char buffer[4096];
+	ssize_t bytesRead = read(_pipeOut[0], buffer, sizeof(buffer));
+
+	if (bytesRead > 0)
 	{
-		char buffer[4096];
-		ssize_t bytesRead = read(_pipeOut[0], buffer, sizeof(buffer));
-
-		if (bytesRead > 0)
-		{
-			_outputBuffer.append(buffer, bytesRead);
-			continue;
-		}
-
-		if (bytesRead == -1)
-		{
-			close(_pipeOut[0]);
-			_pipeOut[0] = -1;
-			_isFinished = true;
-
-			if (_pid > 0)
-				waitpid(_pid, NULL, 0);
-			break;
-		}
-
-		if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
-			break;
-
+		_outputBuffer.append(buffer, bytesRead);
+	}
+	else if (bytesRead == 0) // EOF reached (CGI script finished writing)
+	{
 		close(_pipeOut[0]);
 		_pipeOut[0] = -1;
 		_isFinished = true;
-		break;
+
+		if (_pid > 0)
+			waitpid(_pid, NULL, 0);
+	}
+	else // Error on read
+	{
+		close(_pipeOut[0]);
+		_pipeOut[0] = -1;
+		_isFinished = true;
 	}
 }
 
