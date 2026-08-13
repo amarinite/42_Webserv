@@ -157,6 +157,7 @@ void Processor::doAutoIndex() {
 	html << "</ul>\n<hr>\n</body>\n</html>";
 
 	_responseBody = html.str();
+	_extension = ".html";
 
 }
 
@@ -191,11 +192,11 @@ void Processor::handlePost() {
 	validateDir(uploadPath);
 	if (access(uploadPath.c_str(), W_OK) != 0)
 		throw HttpException(403, "Forbidden: Upload directory is not writable");
-	
+
 	std::string uriPath = _req.getPath();
 	if (uriPath[uriPath.size() - 1] == '/')
 		uriPath.erase(uriPath.size() - 1);
-	
+
 	std::string filename;
 	size_t lastSlash = uriPath.rfind('/');
 	if (lastSlash != std::string::npos)
