@@ -1,4 +1,5 @@
 #include "SocketManager.hpp"
+#include "Signals.hpp"
 
 SocketManager::SocketManager()
 {
@@ -81,11 +82,15 @@ void SocketManager::run()
 {
 	const int POLL_TIMEOUT_MS = 1000; // Timeout CGI
 
-	while (true)
+	while (!g_shutdown)
 	{
 		int ready = poll(&_pollFds[0], _pollFds.size(), POLL_TIMEOUT_MS);
 		if (ready < 0)
+		{
+			if (errno == EINTR)
+				continue;
 			throw std::runtime_error("poll() failed");
+		}
 		for (size_t i = 0; i < _pollFds.size(); i++)
 		{
 			short revents = _pollFds[i].revents;
@@ -107,6 +112,7 @@ void SocketManager::run()
 		}
 		checkAllCgiTimeouts();
 	}
+	std::cout << "Apagando server oops" << std::endl;
 }
 
 // Nuevas Conexiones
