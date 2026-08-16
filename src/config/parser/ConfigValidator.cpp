@@ -171,6 +171,29 @@ void ConfigValidator::hasOneRoutePath(const Node* node)
 	}
 }
 
+bool ConfigValidator::isSubPath(const std::string& parentPath, const std::string& childPath)
+{
+	if (childPath.size() < parentPath.size())
+		return false;
+	if (childPath.compare(0, parentPath.size(), parentPath) != 0)
+		return false;
+	if (childPath.size() == parentPath.size())
+		return true;
+	if (parentPath[parentPath.size() - 1] == '/')
+		return true;
+	return childPath[parentPath.size()] == '/';
+}
+
+void ConfigValidator::isPathContainedInParent(const Node* node, const std::string& parentLocationPath)
+{
+	if (parentLocationPath.empty())
+		return;
+
+	const std::string& childPath = node->args[0];
+	if (!isSubPath(parentLocationPath, childPath))
+		throw ConfigException("nested location path must be a sub-path of its parent", node->line);
+}
+
 void ConfigValidator::hasNoDuplicateDirectives(const Node* node)
 {
 	const std::map<std::string, DirectiveRule>& rules =
@@ -322,7 +345,7 @@ void ConfigValidator::validateCgiExtension(const Node* node)
 	}
 }
 
-void ConfigValidator::validateNode(const Node* node, std::set<ListenAddr>& seenAddrs)
+void ConfigValidator::validateNode(const Node* node, std::set<ListenAddr>& seenAddrs, const std::string& parentPath)
 {
 	if (!node)
 		return;
@@ -342,7 +365,10 @@ void ConfigValidator::validateNode(const Node* node, std::set<ListenAddr>& seenA
 			hasNoArgs(node);
 		}
 		else if (node->name ==  "location")
+		{
 			hasOneRoutePath(node);
+			isPathContainedInParent(node, parentPath);
+		}
 	}
 	else if (node->type == NODE_DIR)
 	{
@@ -351,8 +377,12 @@ void ConfigValidator::validateNode(const Node* node, std::set<ListenAddr>& seenA
 			hasDuplicateListenAddr(node, seenAddrs);
 	}
 
+	std::string nextParentPath = (node->type == NODE_BLOCK && node->name == "location")
+								? node->args[0]
+								: parentPath;
+
 	for (size_t i = 0; i < node->children.size(); i++)
-		validateNode(node->children[i], seenAddrs);
+		validateNode(node->children[i], seenAddrs, nextParentPath);
 }
 
 void ConfigValidator::validate(const Node* root)
@@ -361,6 +391,6 @@ void ConfigValidator::validate(const Node* root)
 
 	for (size_t i = 0; i < root->children.size(); i++)
 	{
-		validateNode(root->children[i], seenAddrs);
+		validateNode(root->children[i], seenAddrs, "");
 	}
 }
