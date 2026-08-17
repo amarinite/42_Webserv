@@ -76,16 +76,6 @@ bool Processor::findIndexPage() {
 }
 
 /**
- * @brief Validates directory permissions.
- *
- * @return const std::string validated path.
- */
-const std::string Processor::requestPath() const {
-	validateDir(_req.getPath());
-	return _req.getPath();
-}
-
-/**
  * @brief Creates the autoindex page.
  *
  * @throws HttpException 403 if user has no permits.
@@ -95,7 +85,6 @@ const std::string Processor::requestPath() const {
 void Processor::doAutoIndex() {
 	if (!_lc.hasAutoIndex())
 		throw HttpException(403, "Forbidden 1");
-
 	DIR *folder = opendir(_fullPath.c_str());
 	if (folder == NULL) {
 		if (errno == EACCES)
@@ -105,13 +94,11 @@ void Processor::doAutoIndex() {
 		else
 			throw HttpException(500, "Internal Server Error");
 	}
-
-	std::string path = requestPath();
 	std::stringstream html;
 
-	html << "<html>\n<head><title>Index of " << path << "</title></head>\n";
+	html << "<html>\n<head><title>Index of " << _fullPath << "</title></head>\n";
 	html << "<body style=\"font-family: sans-serif; padding: 20px;\">\n";
-	html << "<h1>Index of " << path << "</h1>\n<hr>\n<ul>\n";
+	html << "<h1>Index of " << _fullPath << "</h1>\n<hr>\n<ul>\n";
 
 	struct dirent *content;
 	while ((content = readdir(folder)) != NULL)
@@ -123,7 +110,6 @@ void Processor::doAutoIndex() {
 
 	_responseBody = html.str();
 	_extension = ".html";
-
 }
 
 /**
@@ -236,6 +222,7 @@ void Processor::processorRoutine() {
 	}
 
 	_fullPath = concatPaths(_lc.getRoot(), _req.getPath());
+	std::cout << _fullPath << std::endl;
 	if (!isValidMethod()) {
 		throw HttpException(405, "Method Not Allowed", findAllowedMethods(_lc.getAllowedMethods()));
 	}

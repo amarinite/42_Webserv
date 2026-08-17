@@ -68,7 +68,7 @@ bool validateFile(const std::string &path) {
 		throw HttpException(403, "Forbidden. 6");
 	return true;
 }
-
+#include  <iostream>
 /**
  * @brief Checks if the requested directory exists
  * 		and if it has the adequate permissions.
@@ -78,6 +78,7 @@ bool validateFile(const std::string &path) {
  * @throws HttpException 403 if the server has no access to it.
  */
 bool validateDir(const std::string &dir) {
+	std::cout << dir << std::endl;
 	struct stat buff;
 	if (stat(dir.c_str(), &buff) != 0)
 		throw HttpException(404, "Not Found.");

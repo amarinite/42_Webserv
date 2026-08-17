@@ -23,12 +23,12 @@ std::string Response::getTime() {
 }
 
 void Response::assignHeaders(const std::string &extension, const std::string &connection) {
-	_headers["Server"] = "Group de Afectadous by Taha";
-	_headers["Date"] = getTime();
-	_headers["Connection"] = connection;
+	_headers["Server: "] = "Group de Afectadous by Taha";
+	_headers["Date: "] = getTime();
+	_headers["Connection: "] = connection;
 	if (!_responseBody.empty()) {
-		_headers["Content-Type"] = _mimeMap.getType(extension);
-		_headers["Content-Length"] = toStr(_responseBody.size());
+		_headers["Content-Type: "] = _mimeMap.getType(extension);
+		_headers["Content-Length: "] = toStr(_responseBody.size());
 	}
 }
 
@@ -40,7 +40,7 @@ void Response::setLocationHeader(const std::string &location) {
 
 // Case 405 - Not allowed method.
 void Response::setAllowedMethodsHeader(const std::string &allowed) {
-	_headers["Allow"] = allowed;
+	_headers["Allow: "] = allowed;
 }
 
 void Response::errorBody(const std::string &statusCode, const std::string &errorDir) {
@@ -101,11 +101,11 @@ void Response::addRawHeader(const std::string &key, const std::string &value) {
 }
 
 void Response::assignConnectionAndLengthHeaders(const std::string &connection) {
-	_headers["Server"] = "Group de Afectadous by Taha";
-	_headers["Date"] = getTime();
-	_headers["Connection"] = connection;
+	_headers["Server: "] = "Group de Afectadous by Taha";
+	_headers["Date: "] = getTime();
+	_headers["Connection: "] = connection;
 	if (!_responseBody.empty())
-		_headers["Content-Length"] = toStr(_responseBody.size());
+		_headers["Content-Length: "] = toStr(_responseBody.size());
 }
 
 // Setters.

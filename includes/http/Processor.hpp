@@ -54,8 +54,6 @@ class Processor {
 		bool isRedirect() const;
 		void handleRedirect();
 
-		const std::string requestPath() const;
-
 	public:
 		// Constructor.
 		Processor(Request &req, Response &res, const LocationConfig &lc);
