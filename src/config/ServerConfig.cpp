@@ -114,36 +114,20 @@ const std::vector<LocationConfig>& ServerConfig::getLocations() const
 	return _locations;
 }
 
-bool isValidMatch(const std::string& reqPath, const std::string& configPath)
-{
-	if (reqPath.compare(0, configPath.size(), configPath) != 0)
-		return false;
-
-	if (reqPath.size() == configPath.size())
-		return true;
-
-	if (configPath[configPath.size() - 1] == '/')
-		return true;
-
-	if (reqPath[configPath.size()] == '/')
-		return true;
-
-	return false;
-}
-
 const LocationConfig& ServerConfig::getLocationConfig(const t_uri& uri) const
 {
 	const LocationConfig* best = NULL;
 	size_t bestLen = 0;
-
 	for (size_t i = 0; i < _locations.size(); ++i)
 	{
-		const std::string& locPath = _locations[i].getPath().path;
-		if (isValidMatch(uri.path, locPath) && locPath.size() > bestLen)
+		const std::string& path = _locations[i].getPath().path;
+		if (isValidMatch(uri.path, path) && path.size() > bestLen)
 		{
 			best = &_locations[i];
-			bestLen = locPath.size();
+			bestLen = path.size();
 		}
 	}
-	return *best;
+	
+	const LocationConfig* deeper = best->getLocationConfig(uri);
+	return deeper ? *deeper : *best;
 }

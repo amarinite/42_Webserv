@@ -18,6 +18,7 @@ class LocationConfig
 		std::map<std::string, std::string>	_cgi_extension;
 		std::string							_root;
 		std::vector<std::string>			_index;
+		std::vector<LocationConfig>			_locations;
 
 		typedef void (LocationConfig::*DirectiveHandler)(const Node*);
 		static std::map<std::string, DirectiveHandler>	initHandlers();
@@ -33,7 +34,9 @@ class LocationConfig
 	public:
 		LocationConfig();
 		static LocationConfig						build(Node* locationNode, const ServerConfig& parent);
+		static LocationConfig						build(Node* locationNode, const LocationConfig& parent);
 		static LocationConfig						buildDefault(const ServerConfig& parent);
+		static LocationConfig						buildFrom(Node* locationNode, const std::string& root, const std::vector<std::string>& index);
 
 		bool										hasAutoIndex() const;
 		bool										hasUploadEnabled() const;
@@ -46,4 +49,8 @@ class LocationConfig
 		const std::map<std::string, std::string>&	getCgiExtension() const;
 		const std::string&							getRoot() const;
 		const std::vector<std::string>&				getIndex() const;
+		const std::vector<LocationConfig>&			getLocations() const;
+		const LocationConfig*						getLocationConfig(const t_uri& uri) const;
 };
+
+bool	isValidMatch(const std::string& reqPath, const std::string& configPath);

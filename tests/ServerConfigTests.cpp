@@ -242,6 +242,41 @@ static bool testServerConfigGetLocationConfigLongestMatch()
 	return true;
 }
 
+static bool testServerConfigNestedLocationLongestMatch()
+{
+	std::string input =
+		"server {\n"
+		"    listen 80;\n"
+		"    root /var/www;\n"
+		"    location /a {\n"
+		"        root /var/www/a;\n"
+		"        location /a/b {\n"
+		"            root /var/www/a/b;\n"
+		"        }\n"
+		"    }\n"
+		"}\n";
+
+	Node* serverNode = getFirstServerNode(input);
+	ASSERT(serverNode != NULL);
+
+	ServerConfig config = ServerConfig::build(serverNode);
+	delete serverNode;
+
+	t_uri deepUri;
+	parseUri(deepUri, "/a/b/file.txt");
+	const LocationConfig& deepMatch = config.getLocationConfig(deepUri);
+	ASSERT(deepMatch.getPath().path == "/a/b");
+	ASSERT(deepMatch.getRoot() == "/var/www/a/b");
+
+	t_uri shallowUri;
+	parseUri(shallowUri, "/a/other.txt");
+	const LocationConfig& shallowMatch = config.getLocationConfig(shallowUri);
+	ASSERT(shallowMatch.getPath().path == "/a");
+	ASSERT(shallowMatch.getRoot() == "/var/www/a");
+
+	return true;
+}
+
 // ============ runner ============
 
 void runServerConfigTests(int& passed, int& failed)
@@ -254,6 +289,7 @@ void runServerConfigTests(int& passed, int& failed)
 		{ "explicit root location suppresses default injection",  testServerConfigExplicitRootLocationNoDefaultAdded },
 		{ "no root location triggers default location injection", testServerConfigNoRootLocationInjectsDefault },
 		{ "getLocationConfig resolves longest prefix match",      testServerConfigGetLocationConfigLongestMatch },
+		{ "nested location's closest match is correct",           testServerConfigNestedLocationLongestMatch }
 	};
 
 	int localPassed = 0;
