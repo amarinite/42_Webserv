@@ -39,7 +39,7 @@ const std::map<std::string, DirectiveRule>& ConfigValidator::getLocationRules()
 		DirectiveRule redirect_rule = {1, 1, false, &ConfigValidator::validateRedirect};
 		DirectiveRule autoindex_rule = {1, 1, false, &ConfigValidator::validateAutoindex};
 		DirectiveRule upload_store_rule = {1, 1, false, &ConfigValidator::validateUploadStore};
-		DirectiveRule cgi_extension_rule = {2, -1, false, &ConfigValidator::validateCgiExtension};
+		DirectiveRule cgi_extension_rule = {2, -1, true, &ConfigValidator::validateCgiExtension};
 
 		rules["root"] = root_rule;
 		rules["index"] = index_rule;
@@ -55,9 +55,9 @@ const std::map<std::string, DirectiveRule>& ConfigValidator::getLocationRules()
 struct NodeNameIs
 {
 	std::string target_name;
-	
+
 	NodeNameIs(const std::string& name) : target_name(name) {}
-	
+
 	bool operator()(const Node* node) const
 	{
 		return node && node->name == target_name;
@@ -76,7 +76,7 @@ struct CompareNodeByName
 
 void ConfigValidator::isNameAllowed(const Node* node)
 {
-	bool allowed = false; 
+	bool allowed = false;
 	if (node->type == NODE_BLOCK)
 	{
 		const std::set<std::string>& blocks = getAllowedBlocks();
@@ -85,8 +85,8 @@ void ConfigValidator::isNameAllowed(const Node* node)
 	}
 	else
 	{
-		const std::map<std::string, DirectiveRule>& dirs = 
-			(node->context == SERVER_CTXT) ? getServerRules() : getLocationRules(); 
+		const std::map<std::string, DirectiveRule>& dirs =
+			(node->context == SERVER_CTXT) ? getServerRules() : getLocationRules();
 
 		if (dirs.find(node->name) != dirs.end())
 			allowed = true;
@@ -134,18 +134,18 @@ void ConfigValidator::isBlockEmpty(const std::vector<Node*>& children, int line)
 
 void ConfigValidator::isListenSet(const std::vector<Node*>& children, int line)
 {
-	std::vector<Node*>::const_iterator it = 
+	std::vector<Node*>::const_iterator it =
 		std::find_if(children.begin(), children.end(), NodeNameIs("listen"));
-	
+
 	if (it == children.end())
 		throw ConfigException("missing listen directive inside server block", line);
 }
 
 void ConfigValidator::isRootSet(const std::vector<Node*>& children, int line)
 {
-	std::vector<Node*>::const_iterator it = 
+	std::vector<Node*>::const_iterator it =
 		std::find_if(children.begin(), children.end(), NodeNameIs("root"));
-	
+
 	if (it == children.end())
 		throw ConfigException("missing root directive inside server block", line);
 }
@@ -160,7 +160,7 @@ void ConfigValidator::hasOneRoutePath(const Node* node)
 {
 	if (node->args.size() != 1)
 		throw ConfigException("unexpected args", node->line);
-	
+
 	t_uri uri;
 
 	try {
@@ -229,7 +229,7 @@ void ConfigValidator::validateDirective(const Node* node)
 
 	if (rule.maxArgs != -1 && argCount > static_cast<size_t>(rule.maxArgs))
 		throw ConfigException("too many arguments for directive " + node->name, node->line);
-	
+
 	if (rule.validator)
 		(rule.validator)(node);
 	}

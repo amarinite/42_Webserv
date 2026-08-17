@@ -8,6 +8,9 @@
 #include <vector>
 #include <map>
 #include <poll.h>
+#include <stdexcept>
+#include <iostream>
+#include <cstring>
 
 class SocketManager
 {
@@ -18,13 +21,21 @@ private:
 	std::map<int, Http*>			_httpClients;
 	std::map<int, const ServerConfig*>	_listenerConfig;
 	std::map<int, const ServerConfig*>	_clientConfig;
+	std::map<int, int>					_cgiFdToClient;
 
-	void addToPoll(int fd);
+	void addPollFd(int fd, short events);
+	void removePollFd(int fd);
+	void updatePollEvents(int fd, short events);
+
 	void handleNewConnection(int listenerFd);
-	void handleClientData(size_t pollIndex);
-	void disconnectClient(size_t pollIndex);
+	void handleClientData(int fd);
+	void handleCgiEvent(int fd, short revents);
+	void disconnectClient(int fd);
 	void resetRequest(int fd);
-	void sendAll(int fd, const char *data, size_t len);
+
+	void syncCgiState(int clientFd, Http *http);
+	void finishAndRespond(int clientFd, Http *http);
+	void checkAllCgiTimeouts();
 
 	SocketManager(const SocketManager &other);
 	SocketManager &operator=(const SocketManager &other);

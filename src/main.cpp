@@ -6,6 +6,7 @@
 #include "ConfigValidator.hpp"
 #include "ConfigException.hpp"
 #include "Config.hpp"
+#include "Signals.hpp"
 
 int main(int argc, char** argv)
 {
@@ -19,6 +20,7 @@ int main(int argc, char** argv)
 
 	try
 	{
+		setupSignalHandlers();
 		std::string source = readFile(argv[1]);
 
 		std::vector<Token> tokens = Lexer::tokenize(source);
@@ -34,9 +36,6 @@ int main(int argc, char** argv)
 
 		ServerManager manager(config);
 		manager.run();
-
-		std::cout << "Config loaded successfully (" << config.getServers().size()
-			<< " server block(s)). ServerManager not yet implemented.\n";
 	}
 	catch (const std::exception& e)
 	{

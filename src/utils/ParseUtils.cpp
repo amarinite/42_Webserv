@@ -2,15 +2,15 @@
 
 int parseNumber(const std::string& str)
 {
-	if (str.empty()) 
+	if (str.empty())
 		throw std::invalid_argument("Empty string passed to parseNumber");
 
 	std::stringstream ss(str);
 	int value;
 
-	if ((ss >> value) && (ss.eof())) 
+	if ((ss >> value) && (ss.eof()))
 		return value;
-	
+
 	throw std::invalid_argument("Invalid integer format: \"" + str + "\"");
 }
 
@@ -59,11 +59,10 @@ ListenAddr parseListenArg(const std::string& arg)
 bool isHttpCodeValid(int code)
 {
 	static const int validCodes[] = {
-		100, 101,
 		200, 201, 202, 204,
-		301, 302, 303, 307, 308,
-		400, 401, 403, 404, 405, 408, 409, 413,
-		500, 501, 502, 503, 504
+		301, 302,
+		400, 403, 404, 405, 413,
+		500, 501, 502, 504, 505
 	};
 	static const size_t validCodesCount =
 		sizeof(validCodes) / sizeof(validCodes[0]);
@@ -73,7 +72,7 @@ bool isHttpCodeValid(int code)
 		if (validCodes[i] == code)
 			return true;
 	}
-	
+
 	std::stringstream ss;
 	ss << code;
 	throw std::invalid_argument("invalid HTTP status code: " + ss.str());

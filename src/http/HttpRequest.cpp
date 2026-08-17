@@ -15,20 +15,6 @@ Request::Request(size_t clientMaxBodySize) :
 	_chunkSize(false),
 	_allowedMethods(NULL) {}
 
-// Request::Request(const Request &other) : _leftover(NULL) {
-// 	*this = other;
-// }
-
-// Request &Request::operator=(const Request &other) {
-// 	if (this != &other) {
-// 		this->_headers = other._headers;
-// 		this->_body = other._body;
-// 		this->_stream = other._stream;
-// 		this->_leftover = other._leftover;
-// 	}
-// 	return *this;
-// }
-
 Request::~Request() {}
 
 // Functs
@@ -198,7 +184,6 @@ bool Request::parseHeaders() {
 		this->findValue();
 		this->addHeader();
 	}
-	// Connection: Puede ser keep-alive (mantener el socket abierto para reutilizarlo en futuras peticiones) o close (cerrar el socket en cuanto envíes la respuesta).
 }
 
 void Request::checkInvalidHeaders() {
@@ -225,7 +210,7 @@ static void setGlobalConnexion(std::map<std::string, std::string> &headers) {
 		}
 	}
 	exceptConnection = true;
-} 
+}
 
 bool Request::parseRequestHead() {
 	if (!parseMethod())
@@ -234,7 +219,7 @@ bool Request::parseRequestHead() {
 		return false;
 	checkInvalidHeaders();
 	setGlobalConnexion(_headers);
-			
+
 	return true;
 }
 
@@ -257,7 +242,7 @@ static size_t strToSize_t(const std::string &str, const int base) {
 				throw HttpException(400, "Bad Request: Invalid Body Size.");
 			}
 		}
-	} else 
+	} else
 		throw HttpException(400, "Bad Request: Unsuported Base.");
 	return (static_cast<size_t>(std::strtoul(str.c_str(), NULL, base)));
 }
@@ -281,7 +266,7 @@ void Request::setBodyType() {
 		_maxBodySize = strToSize_t(_headers.find("content-length")->second, 10);
 		if (_maxBodySize > _client_max_body_size)
 			throw HttpException(413, "Payload Too Large.");
-	} else if (hasTransferEncoding) 
+	} else if (hasTransferEncoding)
 		_bodyType = CHUNKED;
 }
 
@@ -301,7 +286,7 @@ bool Request::fullBody() {
 		size_t remaining = _maxBodySize - _body.size();
 		_leftover = _stream.substr(remaining);
 		_body += _stream.substr(0, remaining);
-		_stream.clear();		
+		_stream.clear();
 		_maxBodySize = 0;
 		return true;
 	}
@@ -337,7 +322,7 @@ bool Request::chunkedBody() {
 				_leftover = _stream.substr(pos + 4);
 				_stream.clear();
 				return true;
-			} 
+			}
 			_maxBodySize = strToSize_t(sizeStr, 16);
 			_stream.erase(0, pos + 2);
 			_chunkSize = true;

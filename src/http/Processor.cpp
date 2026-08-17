@@ -52,40 +52,6 @@ void Processor::convertFileExtension(const std::string &ext) {
 	_extension = map.getType(ext);
 }
 
-// For POST
-// void Processor::handleMultipart(std::string &content) {
-// 	size_t pos = content.find("boundary")
-// 	if (pos == content.end())
-// 		throw HttpException(400, "Bad Request: Bad Header");
-// 	std::string boundary = "--" + content.substr(10);
-// }
-
-// void Processor::handleContentType() {
-// 	std::map<std::string, std::string>::iterator it = _req._headers.find("content-type");
-// 	if (it == _req._headers.end())
-// 		throw HttpException(400, "Bad Request: Missing Content-Type header");
-// 	if (it->second.find("multipart/form-data"))
-// 		handleMultipart(it->second);
-// 	else if (it->second.find("application/x-www-form-urlencoded"))
-// 		handleXForm(it->second);
-// 	else if (it->second.find("text/plain") || it->second.find("application/octet-stream"))
-// 		handlePlainTxt(it->second);
-// }
-
-// /**
-//  * @brief Creates a file and fill it with the body parsed in the Http Request.
-//  *
-//  * @throws HttpException 500 if ti fails creating th file.
-//  */
-// void Processor::createFile() {
-// 	std::ofstream newFile(_fullPath.c_str());
-// 	if (newFile.is_open()) {
-// 		newFile << _req.getBody();
-// 		newFile.close();
-// 	} else
-// 		throw HttpException(500, "Internal Server Error: error creating file.");
-// }
-
 /**
  * @brief checks for multiple index pages and returns de first that exists.
  *
@@ -110,16 +76,6 @@ bool Processor::findIndexPage() {
 }
 
 /**
- * @brief Validates directory permissions.
- *
- * @return const std::string validated path.
- */
-const std::string Processor::requestPath() const {
-	validateDir(_req.getPath());
-	return _req.getPath();
-}
-
-/**
  * @brief Creates the autoindex page.
  *
  * @throws HttpException 403 if user has no permits.
@@ -128,24 +84,21 @@ const std::string Processor::requestPath() const {
  */
 void Processor::doAutoIndex() {
 	if (!_lc.hasAutoIndex())
-		throw HttpException(403, "Forbidden");
-
+		throw HttpException(403, "Forbidden 1");
 	DIR *folder = opendir(_fullPath.c_str());
 	if (folder == NULL) {
 		if (errno == EACCES)
-			throw HttpException(403, "Forbidden");
+			throw HttpException(403, "Forbidden 2");
 		else if (errno == ENOENT)
 			throw HttpException(404, "Not Found");
 		else
 			throw HttpException(500, "Internal Server Error");
 	}
-
-	std::string path = requestPath();
 	std::stringstream html;
 
-	html << "<html>\n<head><title>Index of " << path << "</title></head>\n";
+	html << "<html>\n<head><title>Index of " << _fullPath << "</title></head>\n";
 	html << "<body style=\"font-family: sans-serif; padding: 20px;\">\n";
-	html << "<h1>Index of " << path << "</h1>\n<hr>\n<ul>\n";
+	html << "<h1>Index of " << _fullPath << "</h1>\n<hr>\n<ul>\n";
 
 	struct dirent *content;
 	while ((content = readdir(folder)) != NULL)
@@ -156,7 +109,7 @@ void Processor::doAutoIndex() {
 	html << "</ul>\n<hr>\n</body>\n</html>";
 
 	_responseBody = html.str();
-
+	_extension = ".html";
 }
 
 /**
@@ -190,11 +143,11 @@ void Processor::handlePost() {
 	validateDir(uploadPath);
 	if (access(uploadPath.c_str(), W_OK) != 0)
 		throw HttpException(403, "Forbidden: Upload directory is not writable");
-	
+
 	std::string uriPath = _req.getPath();
 	if (uriPath[uriPath.size() - 1] == '/')
 		uriPath.erase(uriPath.size() - 1);
-	
+
 	std::string filename;
 	size_t lastSlash = uriPath.rfind('/');
 	if (lastSlash != std::string::npos)
@@ -254,8 +207,6 @@ void Processor::handleRedirect() {
 	_codeMsg = "Moved Permanently";
 	_redirectPath = toString(redirect);
 	_responseBody.clear();
-	// if browser shows error
-	// _responseBody = "<html><body><a href=\"" + _redirectPath + "\">Redirecting...</a></body></html>";
 }
 
 // Routine

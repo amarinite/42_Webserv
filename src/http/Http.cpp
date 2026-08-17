@@ -64,20 +64,6 @@ void Http::setClientIp(const std::string &ip) {
 	_clientIp = ip;
 }
 
-// la_funct_del_isaac() {
-// 	// Deberia ser algo asi:
-// 	Http Request;
-// 	char buffer[cantidad];
-// 	size_t bytesRead = recv(something, &buffer, something);
-// 	try {
-// 		Request.httpRoutine(buffer, bytesRead);
-// 		buildResponse();
-// 	} catch (const HttpException& e) {
-// 		Request._status = WRITING_RESPONSE;
-// 		buildResponse();
-// 	}
-// }
-
 void Http::startProcessing() {
 	const LocationConfig &lc = _sConfig.getLocationConfig(_request.getUri());
 	delete _processor;
@@ -86,7 +72,6 @@ void Http::startProcessing() {
 
 void Http::startCgi() {
 	char **envp = CgiHandler::buildCgiEnv(_request, _sConfig, _clientIp);
-
 	_cgi = new CgiExecutor();
 	try {
 		_cgi->execute(envp, _processor->getCgiScriptPath(),

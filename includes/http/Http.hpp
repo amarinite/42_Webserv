@@ -33,8 +33,6 @@ class Http {
 		CgiExecutor			*_cgi;
 		std::string			_clientIp;
 
-		// IP!!!!!!!!!!!!!!!!!!!
-
 		//Functs
 		void addLeftover(std::string &rawBuff, size_t &rawBuffSize);
 		void handleBuffer(char *buff, size_t bytesRead);

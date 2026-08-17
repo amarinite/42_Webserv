@@ -10,7 +10,6 @@
 class ServerConfig
 {
 	private:
-		// std::vector<ListenAddr>		_listen;
 		std::vector<ListenAddr>		_listenVector;
 		ListenAddr					_listen;
 		std::map<int, std::string>	_error_pages;

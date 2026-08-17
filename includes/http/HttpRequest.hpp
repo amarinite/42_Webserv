@@ -42,7 +42,7 @@ class Request {
 		bool _parsedKey;
 		bool _parsedValue;
 		bool _incompleteEndLine;
-		
+
 		// Body Parse
 		BodyType	_bodyType;
 		size_t		_maxBodySize;
@@ -66,17 +66,15 @@ class Request {
 		bool chunkedBody();
 		bool fullBody();
 		void setBodyType();
-		
+
 	public:
 		Request(size_t clientMaxBodySize);
-		// Request(const Request &other);
-		// Request &operator=(const Request &other);
 		~Request();
 
 		// Public Functs
 		bool parseRequestHead();
 		bool parseRequestBody();
-		
+
 		// Getters
 		const std::string	&getMethod() const;
 		const std::string	&getBody() const;

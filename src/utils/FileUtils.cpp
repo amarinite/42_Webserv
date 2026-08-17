@@ -29,29 +29,29 @@ void createFile(const std::string& path, const std::string &content)
 /**
  * @brief Detects if the path refers to a file or directory and
  *			if it has the according access rights.
- * 
+ *
  * @param path the full path to analyze.
  * @return true if it is a directory, false if it is a regular file.
  */
 bool validatePathDir(const std::string &path) {
 	struct stat buff;
-	if (stat(path.c_str(), &buff) != 0)
-		throw HttpException(404, "Not Found.");
+	 if (stat(path.c_str(), &buff) != 0)
+	 	throw HttpException(404, "Not Found.");
 	if (S_ISDIR(buff.st_mode)) {
 		if (access(path.c_str(), R_OK | X_OK) != 0)
-			throw HttpException(403, "Forbidden.");
+			throw HttpException(403, "Forbidden. 3");
 		return true; // Is dir.
 	}
 	else if (S_ISREG(buff.st_mode)) {
 		if (access(path.c_str(), R_OK) != 0)
-			throw HttpException(403, "Forbidden.");
+			throw HttpException(403, "Forbidden. 4");
 		return false; // Is file.
 	}
-	throw HttpException(403, "Forbidden.");
+	throw HttpException(403, "Forbidden. 5");
 }
 
 /**
- * @brief Checks if the requested file exists 
+ * @brief Checks if the requested file exists
  *		and if it has the adequate permissions.
  *
  * @param path the full path to analyze.
@@ -65,12 +65,12 @@ bool validateFile(const std::string &path) {
 	if (!S_ISREG(buff.st_mode))
 		throw HttpException(403, "Forbidden: Target is not a regular file.");
 	if (access(path.c_str(), R_OK) != 0)
-		throw HttpException(403, "Forbidden.");
+		throw HttpException(403, "Forbidden. 6");
 	return true;
 }
-
+#include  <iostream>
 /**
- * @brief Checks if the requested directory exists 
+ * @brief Checks if the requested directory exists
  * 		and if it has the adequate permissions.
  *
  * @param path the full path to analyze.
@@ -82,13 +82,13 @@ bool validateDir(const std::string &dir) {
 	if (stat(dir.c_str(), &buff) != 0)
 		throw HttpException(404, "Not Found.");
 	if (!S_ISDIR(buff.st_mode))
-		throw HttpException(403, "Forbidden.");
+		throw HttpException(403, "Forbidden. 7");
 	return true;
 }
 
 /**
  * @brief Gets the Extension of the requested file.
- * 
+ *
 * @param path the full path to analyze.
  * @note Relies on the internal target path storage (_fullpath).
  * @return std::string Extension of the file.
@@ -106,7 +106,7 @@ std::string findFileExtension(const std::string &path) {
 
 /**
  * @brief Removes a file from the system.
- *	
+ *
  * @param path the full path to analyze.
  * @throws HttpException 500 if std::remove() fails.
  */
