@@ -78,7 +78,6 @@ bool validateFile(const std::string &path) {
  * @throws HttpException 403 if the server has no access to it.
  */
 bool validateDir(const std::string &dir) {
-	std::cout << dir << std::endl;
 	struct stat buff;
 	if (stat(dir.c_str(), &buff) != 0)
 		throw HttpException(404, "Not Found.");

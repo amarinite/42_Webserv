@@ -64,7 +64,7 @@ check_status "GET /fih -> 200" 200 "http://$HOST:$PORT/fih"
 check_status "POST /fih -> metodo no permitido -> 405" 405 -X POST "http://$HOST:$PORT/fih"
 
 echo -e "\n--- /upload (POST only) ---"
-check_status "POST /upload con body -> 200/201" 201 -X POST -d "contenido de prueba" "http://$HOST:$PORT/upload"
+check_status "POST /upload con body -> 200/201" 201 -X POST -d "contenido de prueba (Mipenesitoloko)" "http://$HOST:$PORT/upload"
 check_status "GET /upload -> metodo no permitido -> 405" 405 "http://$HOST:$PORT/upload"
 
 echo -e "\n--- /old (redirect a /new) ---"

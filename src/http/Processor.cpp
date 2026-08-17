@@ -222,7 +222,6 @@ void Processor::processorRoutine() {
 	}
 
 	_fullPath = concatPaths(_lc.getRoot(), _req.getPath());
-	std::cout << _fullPath << std::endl;
 	if (!isValidMethod()) {
 		throw HttpException(405, "Method Not Allowed", findAllowedMethods(_lc.getAllowedMethods()));
 	}
