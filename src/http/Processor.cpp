@@ -52,40 +52,6 @@ void Processor::convertFileExtension(const std::string &ext) {
 	_extension = map.getType(ext);
 }
 
-// For POST
-// void Processor::handleMultipart(std::string &content) {
-// 	size_t pos = content.find("boundary")
-// 	if (pos == content.end())
-// 		throw HttpException(400, "Bad Request: Bad Header");
-// 	std::string boundary = "--" + content.substr(10);
-// }
-
-// void Processor::handleContentType() {
-// 	std::map<std::string, std::string>::iterator it = _req._headers.find("content-type");
-// 	if (it == _req._headers.end())
-// 		throw HttpException(400, "Bad Request: Missing Content-Type header");
-// 	if (it->second.find("multipart/form-data"))
-// 		handleMultipart(it->second);
-// 	else if (it->second.find("application/x-www-form-urlencoded"))
-// 		handleXForm(it->second);
-// 	else if (it->second.find("text/plain") || it->second.find("application/octet-stream"))
-// 		handlePlainTxt(it->second);
-// }
-
-// /**
-//  * @brief Creates a file and fill it with the body parsed in the Http Request.
-//  *
-//  * @throws HttpException 500 if ti fails creating th file.
-//  */
-// void Processor::createFile() {
-// 	std::ofstream newFile(_fullPath.c_str());
-// 	if (newFile.is_open()) {
-// 		newFile << _req.getBody();
-// 		newFile.close();
-// 	} else
-// 		throw HttpException(500, "Internal Server Error: error creating file.");
-// }
-
 /**
  * @brief checks for multiple index pages and returns de first that exists.
  *
@@ -97,7 +63,6 @@ bool Processor::findIndexPage() {
 	std::vector<std::string>::const_iterator it = indexes.begin();
 	for (; it != indexes.end(); ++it) {
 		std::string potentialIdx = concatPaths(_fullPath, *it);
-		std::cout << potentialIdx << std::endl;
 		try {
 			if (validateFile(potentialIdx)) {
 				_fullPath = potentialIdx;
@@ -256,8 +221,6 @@ void Processor::handleRedirect() {
 	_codeMsg = "Moved Permanently";
 	_redirectPath = toString(redirect);
 	_responseBody.clear();
-	// if browser shows error
-	// _responseBody = "<html><body><a href=\"" + _redirectPath + "\">Redirecting...</a></body></html>";
 }
 
 // Routine

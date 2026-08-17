@@ -26,8 +26,5 @@ const ServerConfig& Config::getServer(const ListenAddr& ipPort) const
 				return _servers[i];
 		}
 	}
-
-	// IS THIS POSSIBLE? PREGUNTAR ISAAC
-	// No se (?
 	throw std::runtime_error("Config::getServer: no server for given ip:port");
 }

@@ -10,7 +10,7 @@ ServerManager::~ServerManager()
 
 void ServerManager::run()
 {
-	std::cout << "ServerManager corriendo con " << _config.getServers().size()
+	std::cout << "ServerManager running with " << _config.getServers().size()
 	<< " server block(s)." << std::endl;
 
 	_socketManager.setup(_config.getServers());

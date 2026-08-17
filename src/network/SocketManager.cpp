@@ -1,9 +1,7 @@
 #include "SocketManager.hpp"
 #include "Signals.hpp"
 
-SocketManager::SocketManager()
-{
-}
+SocketManager::SocketManager() {}
 
 SocketManager::~SocketManager()
 {
@@ -34,7 +32,7 @@ void SocketManager::setup(const std::vector<ServerConfig> &configs)
 			_listenerConfig[listener->getFD()] = &configs[i];
 
 			addPollFd(listener->getFD(), POLLIN);
-			std::cout << "Escuchando " << addrs[j].host << ":" << addrs[j].port << " con fd " << listener->getFD() << std::endl;
+			std::cout << "Listening " << addrs[j].host << ":" << addrs[j].port << " with FD " << listener->getFD() << std::endl;
 		}
 
 	}
@@ -112,7 +110,7 @@ void SocketManager::run()
 		}
 		checkAllCgiTimeouts();
 	}
-	std::cout << "Apagando server oops" << std::endl;
+	std::cout << "\nBomb 💣" << std::endl;
 }
 
 // Nuevas Conexiones
@@ -133,7 +131,7 @@ void SocketManager::handleNewConnection(int listenerFd)
 	_clientConfig[clientFd] = _listenerConfig[listenerFd];
 	addPollFd(clientFd, POLLIN);
 	_httpClients[clientFd] = new Http(*_clientConfig[clientFd]);
-	std::cout << "Nuevos cliente, fd " << clientFd << std::endl;
+	std::cout << "New client with fd " << clientFd << std::endl;
 }
 
 //Gestionar D A T O S
@@ -188,35 +186,35 @@ void SocketManager::syncCgiState(int clientFd, Http *http)
 
 void SocketManager::handleCgiEvent(int fd, short revents)
 {
-    std::map<int, int>::iterator it = _cgiFdToClient.find(fd);
-    if (it == _cgiFdToClient.end())
-        return;
-    int clientFd = it->second;
-    Http *http = _httpClients[clientFd];
+	std::map<int, int>::iterator it = _cgiFdToClient.find(fd);
+	if (it == _cgiFdToClient.end())
+		return;
+	int clientFd = it->second;
+	Http *http = _httpClients[clientFd];
 
-    if (revents & POLLOUT)
-    {
-        http->onCgiWritable();
-        if (http->getCgiWriteFd() == -1)
-        {
-            removePollFd(fd);
-            _cgiFdToClient.erase(fd);
-            syncCgiState(clientFd, http);
-        }
-    }
-    else if (revents & (POLLIN | POLLHUP | POLLERR))
-    {
-        http->onCgiReadable();
-        if (http->getCgiReadFd() == -1)
-        {
-            removePollFd(fd);
-            _cgiFdToClient.erase(fd);
-            if (http->getStatus() == WRITING_RESPONSE)
-                http->HttpRoutine(NULL, 0);
-            if (http->getStatus() == FINISHED)
-                finishAndRespond(clientFd, http);
-        }
-    }
+	if (revents & POLLOUT)
+	{
+		http->onCgiWritable();
+		if (http->getCgiWriteFd() == -1)
+		{
+			removePollFd(fd);
+			_cgiFdToClient.erase(fd);
+			syncCgiState(clientFd, http);
+		}
+	}
+	else if (revents & (POLLIN | POLLHUP | POLLERR))
+	{
+		http->onCgiReadable();
+		if (http->getCgiReadFd() == -1)
+		{
+			removePollFd(fd);
+			_cgiFdToClient.erase(fd);
+			if (http->getStatus() == WRITING_RESPONSE)
+				http->HttpRoutine(NULL, 0);
+			if (http->getStatus() == FINISHED)
+				finishAndRespond(clientFd, http);
+		}
+	}
 }
 
 // Todo donete ahora toca enviar el ojete
@@ -290,7 +288,7 @@ void SocketManager::disconnectClient(int fd)
 	delete _httpClients[fd];
 	_httpClients.erase(fd);
 	_clientConfig.erase(fd);
-	std::cout << "Cliente desconectado, fd: " << fd << std::endl;
+	std::cout << "Client disconnect with fd: " << fd << std::endl;
 
 }
 

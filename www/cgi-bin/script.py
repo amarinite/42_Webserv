@@ -9,6 +9,7 @@ print()  # Línea en blanco obligatoria para separar headers del body
 print("<!DOCTYPE html>")
 print("<html>")
 print("<head><title>CGI Test Success</title></head>")
+print("<head><meta charset='UTF-8'></head>")
 print("<body style='font-family: sans-serif; padding: 2rem;'>")
 print("  <h1 style='color: #2e7d32;'>¡Éxito! El CGI funciona correctamente 🚀</h1>")
 print(f"  <p><b>Versión de Python en el servidor:</b> {sys.version}</p>")

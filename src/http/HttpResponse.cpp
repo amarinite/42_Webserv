@@ -4,11 +4,6 @@ Response::Response() {}
 
 Response::~Response() {}
 
-// void Response::assignHead(const HttpException& e) {
-// 	_statusCode = e.getStatusCode();
-// 	_message = e.getMessage();
-// }
-
 template <typename T>
 std::string toStr(const T &num) {
 	std::ostringstream oss;
@@ -36,41 +31,19 @@ void Response::assignHeaders(const std::string &extension, const std::string &co
 		_headers["Content-Length"] = toStr(_responseBody.size());
 	}
 }
-// void Response::assignHeaders(const std::string &extension, const std::string &connection) {
-//     _headers["Server"] = "Group de Afectadous by Taha";
-//     _headers["Date"] = getTime();
-//     _headers["Connection"] = connection;
-//     if (!_responseBody.empty()) {
-//         _headers["Content-Type"] = _mimeMap.getType(extension);
-//         _headers["Content-Length"] = toStr(_responseBody.size());
-//     }
-// }
-
 
 // Case 301 - Redirect
 void Response::setLocationHeader(const std::string &location) {
 	if (!location.empty())
-		_headers["Location"] = location;
+		_headers["Location: "] = location;
 }
-// void Response::setLocationHeader(const std::string &location) {
-//     if (!location.empty())
-//         _headers["Location"] = location;
-// }
 
 // Case 405 - Not allowed method.
 void Response::setAllowedMethodsHeader(const std::string &allowed) {
 	_headers["Allow"] = allowed;
 }
-// void Response::setAllowedMethodsHeader(const std::string &allowed) {
-//     _headers["Allow"] = allowed;
-// }
 
 void Response::errorBody(const std::string &statusCode, const std::string &errorDir) {
-	// std::string errPage = errorDir;
-	// if (!errPage.empty() && errPage[errPage.size() - 1] != '/') {
-	// 	errPage += "/";
-	// }
-	// errPage += statusCode + ".html";
 	(void) statusCode;
 	try {
 		_responseBody = readFile("www" + errorDir);
@@ -94,28 +67,14 @@ void Response::buildRawResponse() {
 	std::ostringstream oss;
 	oss << "HTTP/1.1 " << _statusCode << " " << _message << "\r\n";
 	std::map<std::string, std::string>::iterator it = _headers.begin();
-	for (; it != _headers.end(); ++it) {
-		// oss << it->first << ": " << it->second << "\r\n";
+	for (; it != _headers.end(); ++it)
 		oss << it->first << it->second << "\r\n";
-	}
 	oss << "\r\n";
 	if (!_responseBody.empty())
 		oss << _responseBody;
 	std::string fullResponse = oss.str();
 	_rawResponse.assign(fullResponse.begin(), fullResponse.end());
 }
-
-
-
-// // Error Response
-// static std::string errorPageBody(const int errorCode, std::map<int, std::string> &error_pages) {
-// 	std::map<int, std::string>::iterator it = error_pages.begin();
-// 	for (; it != error_pages.end(); ++it) {
-// 		if (it->first == errorCode)
-// 			return readFile(it->second);
-// 	}
-// 	return "";
-// }
 
 static std::string setErrorConnection(const int &code) {
 	if (code == 400 || code == 413 || code > 499 || !exceptConnection)
@@ -142,9 +101,9 @@ void Response::addRawHeader(const std::string &key, const std::string &value) {
 }
 
 void Response::assignConnectionAndLengthHeaders(const std::string &connection) {
-	_headers["Server: "] = "Group de Afectadous by Taha";
-	_headers["Date: "] = getTime();
-	_headers["Connection: "] = connection;
+	_headers["Server"] = "Group de Afectadous by Taha";
+	_headers["Date"] = getTime();
+	_headers["Connection"] = connection;
 	if (!_responseBody.empty())
 		_headers["Content-Length"] = toStr(_responseBody.size());
 }
